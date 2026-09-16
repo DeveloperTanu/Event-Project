@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wallet — Student Expense Tracker</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💸</text></svg>">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          surface: { DEFAULT: '#353535', light: '#3f3f3f', dark: '#262626' },
+          accent: { DEFAULT: '#4f46e5', light: '#6366f1', dark: '#4338ca' }
+        },
+        fontFamily: { sans: ['-apple-system','BlinkMacSystemFont','"Segoe UI"','Inter','Roboto','sans-serif'] }
+      }
+    }
+  }
+</script>
+<style>
+  * { -webkit-font-smoothing: antialiased; }
+  html { scroll-behavior: smooth; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: rgba(120,120,120,.35); border-radius: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  .glass { backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+  .fade-in { animation: fadeIn .25s ease both; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(4px);} to {opacity:1; transform:none;} }
+  .num-tabular { font-variant-numeric: tabular-nums; }
+  input[type=date]::-webkit-calendar-picker-indicator { opacity: .6; cursor: pointer; }
+  .dark input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1); opacity:.6; }
+  ::placeholder { opacity: .55; }
+</style>
+</head>
+<body class="bg-zinc-50 dark:bg-surface-dark text-zinc-900 dark:text-zinc-100 min-h-screen transition-colors duration-200">
+
+<div id="app" class="flex min-h-screen"></div>
+
+<script>
+/* ============================= STATE ============================= */
+const CATEGORIES = ['Food','Transport','Education','Shopping','Entertainment','Subscriptions','Health','Other'];
+const INCOME_SOURCES = ['Pocket Money','Salary','Scholarship','Other'];
+const CAT_COLORS = {
+  Food:'#f59e0b', Transport:'#3b82f6', Education:'#8b5cf6', Shopping:'#ec4899',
+  Entertainment:'#14b8a6', Subscriptions:'#6366f1', Health:'#ef4444', Other:'#71717a'
+};
+
+const store = {
+  get(key, fallback){ try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch(e){ return fallback; } },
+  set(key, val){ try { localStorage.setItem(key, JSON.stringify(val)); } catch(e){} }
+};
+
+let state = {
+  view: 'dashboard',
+  theme: store.get('wallet_theme', (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')),
+  expenses: store.get('wallet_expenses', []),
+  income: store.get('wallet_income', []),
+  budgets: store.get('wallet_budgets', []),
+  dashPeriod: 'month',
+  histFilters: { search:'', category:'all', period:'month', start:'', end:'' },
+  modal: null, // {type, payload}
+  toast: null
+};
+
+function persist(){
+  store.set('wallet_expenses', state.expenses);
+  store.set('wallet_income', state.income);
+  store.set('wallet_budgets', state.budgets);
+  store.set('wallet_theme', state.theme);
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function fmtMoney(n){ return '₹' + Number(n||0).toLocaleString('en-IN', {maximumFractionDigits:2}); }
+function fmtDate(d){ return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); }
+
+/* ============================= PERIOD HELPERS ============================= */
+function startOfWeek(d){ const x=new Date(d); const day=x.getDay(); const diff=(day===0?-6:1-day); x.setDate(x.getDate()+diff); x.setHours(0,0,0,0); return x; }
+function periodRange(period, custom){
+  const now = new Date(); now.setHours(0,0,0,0);
+  if(period==='today') return { start: new Date(now), end: new Date(now) };
+  if(period==='week'){ const s = startOfWeek(now); const e = new Date(s); e.setDate(e.getDate()+6); return {start:s, end:e}; }
+  if(period==='month'){ const s=new Date(now.getFullYear(), now.getMonth(),1); const e=new Date(now.getFullYear(), now.getMonth()+1,0); return {start:s,end:e}; }
+  if(period==='custom' && custom && custom.start && custom.end) return { start:new Date(custom.start+'T00:00:00'), end:new Date(custom.end+'T00:00:00') };
+  if(period==='all') return { start:new Date(2000,0,1), end:new Date(2100,0,1) };
+  return { start:new Date(2000,0,1), end:new Date(2100,0,1) };
+}
+function inRange(dateStr, range){
+  const d = new Date(dateStr+'T00:00:00');
+  return d >= range.start && d <= range.end;
+}
+
+/* ============================= CALC HELPERS ============================= */
+function expensesIn(range){ return state.expenses.filter(e=>inRange(e.date, range)); }
+function incomeIn(range){ return state.income.filter(i=>inRange(i.date, range)); }
+function totalOf(arr){ return arr.reduce((s,x)=>s+Number(x.amount||0),0); }
+function categoryBreakdown(arr){
+  const map = {}; CATEGORIES.forEach(c=>map[c]=0);
+  arr.forEach(e=>{ map[e.category]=(map[e.category]||0)+Number(e.amount); });
+  return Object.entries(map).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+}
+function spendOverTime(range){
+  // buckets by day for ranges <=31 days, else by week
+  const days = Math.round((range.end-range.start)/86400000)+1;
+  const buckets = [];
+  if(days<=31){
+    for(let i=0;i<days;i++){
+      const d = new Date(range.start); d.setDate(d.getDate()+i);
+      const iso = d.toISOString().slice(0,10);
+      const sum = state.expenses.filter(e=>e.date===iso).reduce((s,e)=>s+Number(e.amount),0);
+      buckets.push({label: d.toLocaleDateString('en-IN',{day:'numeric',month:'short'}), value: sum});
+    }
+  } else {
+    let cursor = new Date(range.start);
+    while(cursor<=range.end){
+      const wEnd = new Date(cursor); wEnd.setDate(wEnd.getDate()+6);
+      const sum = state.expenses.filter(e=>inRange(e.date,{start:cursor,end:wEnd})).reduce((s,e)=>s+Number(e.amount),0);
+      buckets.push({label: cursor.toLocaleDateString('en-IN',{day:'numeric',month:'short'}), value: sum});
+      cursor = new Date(wEnd); cursor.setDate(cursor.getDate()+1);
+    }
+  }
+  return buckets;
+}
+function budgetProgress(b){
+  const range = periodRange(b.period==='weekly'?'week':'month');
+  const matching = state.expenses.filter(e => inRange(e.date, range) && (b.category==='all' || e.category===b.category));
+  const spent = totalOf(matching);
+  const pct = b.amount>0 ? Math.min(999, (spent/b.amount)*100) : 0;
+  return { spent, pct, range, status: pct>=100?'over':pct>=80?'warn':'ok' };
+}
+
+/* ============================= ICONS ============================= */
+const ICONS = {
+  grid:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>`,
+  list:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
+  trend:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`,
+  target:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>`,
+  gear:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+  sun:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><line x1="12" y1="1.5" x2="12" y2="3.5"/><line x1="12" y1="20.5" x2="12" y2="22.5"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1.5" y1="12" x2="3.5" y2="12"/><line x1="20.5" y1="12" x2="22.5" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></svg>`,
+  moon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/></svg>`,
+  plus:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+  edit:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
+  trash:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`,
+  search:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+  close:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  alert:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+  wallet:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>`,
+  empty:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>`,
+  check:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+  chevronDown:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
+  logo:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="14" rx="3"/><path d="M2 10h20"/><circle cx="17" cy="15" r="1.4" fill="currentColor" stroke="none"/></svg>`
+};
+function icon(name, cls=''){ return `<span class="inline-flex shrink-0 ${cls}">${ICONS[name]||''}</span>`; }
+
+/* ============================= UI PRIMITIVES ============================= */
+function navItem(id, label, iconName){
+  const active = state.view===id;
+  return `<button data-nav="${id}" class="w-full group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-150
+    ${active ? 'bg-accent/10 text-accent dark:bg-accent/20 dark:text-accent-light' : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-100'}">
+    ${icon(iconName,'w-[18px] h-[18px]')}<span>${label}</span>
+  </button>`;
+}
+
+function card(inner, extra=''){
+  return `<div class="rounded-md border border-zinc-200 dark:border-zinc-700/70 bg-white/80 dark:bg-surface/80 glass shadow-sm ${extra}">${inner}</div>`;
+}
+
+function statCard(label, value, sub, iconName, tint){
+  return card(`
+    <div class="p-5">
+      <div class="flex items-start justify-between">
+        <p class="text-xs font-medium text-zinc-500 dark:text-zinc-400">${label}</p>
+        <span class="w-8 h-8 rounded-md flex items-center justify-center ${tint}">${icon(iconName,'w-4 h-4')}</span>
+      </div>
+      <p class="mt-3 text-2xl font-semibold tracking-tight num-tabular">${value}</p>
+      ${sub ? `<p class="mt-1 text-xs text-zinc-400 dark:text-zinc-500">${sub}</p>` : ''}
+    </div>
+  `);
+}
+
+function emptyState(msg, sub){
+  return `<div class="flex flex-col items-center justify-center text-center py-14 px-6 text-zinc-400 dark:text-zinc-500">
+    ${icon('empty','w-9 h-9 mb-3 opacity-60')}
+    <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">${msg}</p>
+    ${sub ? `<p class="text-xs mt-1 max-w-xs">${sub}</p>` : ''}
+  </div>`;
+}
+
+function pill(text, colorClass){
+  return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${colorClass}">${text}</span>`;
+}
+
+function catDot(cat){ return `<span class="w-2 h-2 rounded-full inline-block" style="background:${CAT_COLORS[cat]||'#71717a'}"></span>`; }
+
+function selectField(id, options, selected, extraCls=''){
+  return `<select id="${id}" class="w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/60 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition ${extraCls}">
+    ${options.map(o=>`<option value="${o.value}" ${o.value===selected?'selected':''}>${o.label}</option>`).join('')}
+  </select>`;
+}
+
+/* ============================= CHARTS (SVG) ============================= */
+function donutChart(data, size=180){
+  const total = data.reduce((s,[,v])=>s+v,0);
+  if(total<=0) return emptyState('No spending yet', 'Add an expense to see your breakdown.');
+  const r = size/2 - 14, cx=size/2, cy=size/2, circ = 2*Math.PI*r;
+  let offset = 0;
+  const segs = data.map(([cat,val])=>{
+    const frac = val/total;
+    const len = frac*circ;
+    const seg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${CAT_COLORS[cat]}" stroke-width="14"
+      stroke-dasharray="${len} ${circ-len}" stroke-dashoffset="${-offset}" stroke-linecap="butt" transform="rotate(-90 ${cx} ${cy})"/>`;
+    offset += len;
+    return seg;
+  }).join('');
+  return `
+  <div class="flex flex-col sm:flex-row items-center gap-6">
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="shrink-0">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="currentColor" class="text-zinc-100 dark:text-zinc-700/50" stroke-width="14"/>
+      ${segs}
+      <text x="${cx}" y="${cy-2}" text-anchor="middle" class="fill-zinc-900 dark:fill-zinc-100" style="font-size:15px;font-weight:600">${fmtMoney(total)}</text>
+      <text x="${cx}" y="${cy+16}" text-anchor="middle" class="fill-zinc-400" style="font-size:10px">total spent</text>
+    </svg>
+    <div class="flex-1 w-full space-y-2">
+      ${data.map(([cat,val])=>`
+        <div class="flex items-center justify-between text-sm">
+          <div class="flex items-center gap-2 text-zinc-600 dark:text-zinc-300">${catDot(cat)}<span>${cat}</span></div>
+          <div class="flex items-center gap-2">
+            <span class="num-tabular text-zinc-500 dark:text-zinc-400 text-xs">${((val/total)*100).toFixed(0)}%</span>
+            <span class="num-tabular font-medium">${fmtMoney(val)}</span>
+          </div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function barChart(buckets, height=160){
+  const max = Math.max(1, ...buckets.map(b=>b.value));
+  const w = Math.max(320, buckets.length*36);
+  const barW = Math.min(28, (w/buckets.length)-8);
+  const bars = buckets.map((b,i)=>{
+    const h = (b.value/max)*(height-30);
+    const x = i*(w/buckets.length) + ((w/buckets.length)-barW)/2;
+    const y = height-24-h;
+    return `<g>
+      <rect x="${x}" y="${y}" width="${barW}" height="${Math.max(h,b.value>0?2:0)}" rx="4" class="fill-accent/70 dark:fill-accent-light/70"><title>${b.label}: ${fmtMoney(b.value)}</title></rect>
+      <text x="${x+barW/2}" y="${height-8}" text-anchor="middle" class="fill-zinc-400" style="font-size:9px">${b.label.split(' ')[0]}</text>
+    </g>`;
+  }).join('');
+  return `<div class="overflow-x-auto"><svg width="${w}" height="${height}" viewBox="0 0 ${w} ${height}" class="min-w-full">${bars}</svg></div>`;
+}
+
+/* ============================= VIEWS ============================= */
+function renderDashboard(){
+  const range = periodRange(state.dashPeriod);
+  const exp = expensesIn(range), inc = incomeIn(range);
+  const spent = totalOf(exp), income = totalOf(inc);
+  const allTimeIncome = totalOf(state.income), allTimeSpent = totalOf(state.expenses);
+  const remaining = allTimeIncome - allTimeSpent;
+  const activeBudgets = state.budgets.map(b=>({b, prog: budgetProgress(b)}));
+  const alerts = activeBudgets.filter(x=>x.prog.status!=='ok');
+  const recent = [...state.expenses].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,5);
+
+  return `
+  <div class="space-y-6 fade-in">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h1 class="text-xl font-semibold tracking-tight">Dashboard</h1>
+        <p class="text-sm text-zinc-500 dark:text-zinc-400">Your money, at a glance.</p>
+      </div>
+      ${selectField('dash-period',[
+        {value:'today',label:'Today'},{value:'week',label:'This week'},{value:'month',label:'This month'},{value:'all',label:'All time'}
+      ], state.dashPeriod, 'w-40')}
+    </div>
+
+    ${alerts.length ? `<div class="space-y-2">${alerts.map(({b,prog})=>`
+      <div class="rounded-md border ${prog.status==='over'?'border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300':'border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300'} px-4 py-3 flex items-center gap-3 text-sm">
+        ${icon('alert','w-4 h-4 shrink-0')}
+        <span>${prog.status==='over' ? `You've exceeded "${b.label}" — ${fmtMoney(prog.spent)} of ${fmtMoney(b.amount)}.` : `You're at ${prog.pct.toFixed(0)}% of "${b.label}" — ${fmtMoney(prog.spent)} of ${fmtMoney(b.amount)}.`}</span>
+      </div>`).join('')}</div>` : ''}
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      ${statCard('Total Spent', fmtMoney(spent), state.dashPeriod==='all'?'all time':'selected period', 'wallet', 'bg-red-50 text-red-500 dark:bg-red-950/40 dark:text-red-400')}
+      ${statCard('Income', fmtMoney(income), state.dashPeriod==='all'?'all time':'selected period', 'trend', 'bg-emerald-50 text-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-400')}
+      ${statCard('Remaining Balance', fmtMoney(remaining), 'all-time income − spend', 'target', remaining<0?'bg-red-50 text-red-500 dark:bg-red-950/40 dark:text-red-400':'bg-accent/10 text-accent dark:bg-accent/20 dark:text-accent-light')}
+      ${statCard('Active Budgets', state.budgets.length, state.budgets.length? `${alerts.length} need attention` : 'none set', 'gear', 'bg-violet-50 text-violet-500 dark:bg-violet-950/40 dark:text-violet-400')}
+    </div>
+
+    <div class="grid lg:grid-cols-5 gap-4">
+      <div class="lg:col-span-2">
+        ${card(`<div class="p-5"><h3 class="text-sm font-medium mb-4">Spending by category</h3>${donutChart(categoryBreakdown(exp))}</div>`)}
+      </div>
+      <div class="lg:col-span-3">
+        ${card(`<div class="p-5"><h3 class="text-sm font-medium mb-4">Spending over time</h3>${barChart(spendOverTime(range))}</div>`)}
+      </div>
+    </div>
+
+    ${card(`
+      <div class="p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-medium">Recent expenses</h3>
+          <button data-nav="expenses" class="text-xs font-medium text-accent hover:underline">View all</button>
+        </div>
+        ${recent.length ? `<div class="divide-y divide-zinc-100 dark:divide-zinc-700/50">${recent.map(e=>expenseRow(e,true)).join('')}</div>` : emptyState('No expenses yet','Add your first expense to get started.')}
+      </div>
+    `)}
+  </div>`;
+}
+
+function expenseRow(e, compact=false){
+  return `<div class="flex items-center justify-between py-2.5 ${compact?'':'px-1'} group">
+    <div class="flex items-center gap-3 min-w-0">
+      <span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background:${CAT_COLORS[e.category]}1a; color:${CAT_COLORS[e.category]}">${catDot(e.category)}</span>
+      <div class="min-w-0">
+        <p class="text-sm font-medium truncate">${escapeHtml(e.description)}</p>
+        <p class="text-xs text-zinc-400 dark:text-zinc-500">${e.category} · ${fmtDate(e.date)}</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 shrink-0">
+      <span class="num-tabular text-sm font-semibold">${fmtMoney(e.amount)}</span>
+      ${!compact ? `
+      <div class="hidden group-hover:flex items-center gap-1">
+        <button data-edit-expense="${e.id}" class="p-1.5 rounded-md text-zinc-400 hover:text-accent hover:bg-accent/10 transition">${icon('edit','w-3.5 h-3.5')}</button>
+        <button data-del-expense="${e.id}" class="p-1.5 rounded-md text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition">${icon('trash','w-3.5 h-3.5')}</button>
+      </div>` : ''}
+    </div>
+  </div>`;
+}
+
+function escapeHtml(s){ const d=document.createElement('div'); d.innerText = s==null?'':s; return d.innerHTML; }
+
+function renderExpenses(){
+  const f = state.histFilters;
+  const range = periodRange(f.period, {start:f.start,end:f.end});
+  let list = expensesIn(range);
+  if(f.category!=='all') list = list.filter(e=>e.category===f.category);
+  if(f.search.trim()) list = list.filter(e=>e.description.toLowerCase().includes(f.search.trim().toLowerCase()) || (e.notes||'').toLowerCase().includes(f.search.trim().toLowerCase()));
+  list = [...list].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+  const total = totalOf(list);
+
+  return `
+  <div class="space-y-5 fade-in">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h1 class="text-xl font-semibold tracking-tight">Expenses</h1>
+        <p class="text-sm text-zinc-500 dark:text-zinc-400">${list.length} expense${list.length!==1?'s':''} · ${fmtMoney(total)} total</p>
+      </div>
+      <button data-open-modal="add-expense" class="inline-flex items-center gap-1.5 bg-accent hover:bg-accent-dark text-white text-sm font-medium px-4 py-2 rounded-md transition shadow-sm">
+        ${icon('plus','w-4 h-4')}Add Expense
+      </button>
+    </div>
+
+    ${card(`
+      <div class="p-4 flex flex-wrap gap-3 items-center">
+        <div class="relative flex-1 min-w-[180px]">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">${icon('search','w-4 h-4')}</span>
+          <input id="hist-search" value="${escapeHtml(f.search)}" placeholder="Search expenses..." class="w-full pl-9 pr-3 py-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/60 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition"/>
+        </div>
+        ${selectField('hist-category',[{value:'all',label:'All categories'},...CATEGORIES.map(c=>({value:c,label:c}))], f.category, 'w-44')}
+        ${selectField('hist-period',[
+          {value:'today',label:'Today'},{value:'week',label:'This week'},{value:'month',label:'This month'},{value:'custom',label:'Custom range'},{value:'all',label:'All time'}
+        ], f.period, 'w-40')}
+        ${f.period==='custom' ? `
+          <input type="date" id="hist-start" value="${f.start}" class="rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/60 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"/>
+          <input type="date" id="hist-end" value="${f.end}" class="rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/60 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"/>
+        ` : ''}
+      </div>
+    `)}
+
+    ${card(`<div class="p-5">${list.length ? `<div class="divide-y divide-zinc-100 dark:divide-zinc-700/50">${list.map(e=>expenseRow(e)).join('')}</div>` : emptyState('No matching expenses', 'Try adjusting your filters or add a new expense.')}</div>`)}
+  </div>`;
+}
+
+function renderIncome(){
+  const list = [...state.income].sort((a,b)=>b.date.localeCompare(a.date));
+  const total = totalOf(list);
+  return `
+  <div class="space-y-5 fade-in">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h1 class="text-xl font-semibold tracking-tight">Income</h1>
+        <p class="text-sm text-zinc-500 dark:text-zinc-400">${fmtMoney(total)} received all-time</p>
+      </div>
+      <button data-open-modal="add-income" class="inline-flex items-center gap-1.5 bg-accent hover:bg-accent-dark text-white text-sm font-medium px-4 py-2 rounded-md transition shadow-sm">
+        ${icon('plus','w-4 h-4')}Add Income
+      </button>
+    </div>
+    ${card(`<div class="p-5">${list.length ? `<div class="divide-y divide-zinc-100 dark:divide-zinc-700/50">${list.map(i=>`
+      <div class="flex items-center justify-between py-2.5 group">
+        <div class="flex items-center gap-3 min-w-0">
+          <span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0 bg-emerald-50 text-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-400">${icon('trend','w-4 h-4')}</span>
+          <div class="min-w-0">
+            <p class="text-sm font-medium truncate">${i.source}</p>
+            <p class="text-xs text-zinc-400 dark:text-zinc-500">${fmtDate(i.date)}${i.note?' · '+escapeHtml(i.note):''}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 shrink-0">
+          <span class="num-tabular text-sm font-semibold text-emerald-600 dark:text-emerald-400">+${fmtMoney(i.amount)}</span>
+          <div class="hidden group-hover:flex items-center gap-1">
+            <button data-edit-income="${i.id}" class="p-1.5 rounded-md text-zinc-400 hover:text-accent hover:bg-accent/10 transition">${icon('edit','w-3.5 h-3.5')}</button>
+            <button data-del-income="${i.id}" class="p-1.5 rounded-md text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition">${icon('trash','w-3.5 h-3.5')}</button>
+          </div>
+        </div>
+      </div>`).join('')}</div>` : emptyState('No income recorded', 'Add your pocket money, salary or scholarship.')}</div>`)}
+  </div>`;
+}
+
+function renderBudgets(){
+  const list = state.budgets;
+  return `
+  <div class="space-y-5 fade-in">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h1 class="text-xl font-semibold tracking-tight">Budgets</h1>
+        <p class="text-sm text-zinc-500 dark:text-zinc-400">Set limits and track your progress.</p>
+      </div>
+      <button data-open-modal="add-budget" class="inline-flex items-center gap-1.5 bg-accent hover:bg-accent-dark text-white text-sm font-medium px-4 py-2 rounded-md transition shadow-sm">
+        ${icon('plus','w-4 h-4')}Add Budget
+      </button>
+    </div>
+    ${list.length ? `<div class="grid sm:grid-cols-2 gap-4">${list.map(b=>budgetCard(b)).join('')}</div>` : card(emptyState('No budgets yet','Create a weekly or monthly limit to stay on track.'))}
+  </div>`;
+}
+
+function budgetCard(b){
+  const prog = budgetProgress(b);
+  const barColor = prog.status==='over' ? 'bg-red-500' : prog.status==='warn' ? 'bg-amber-500' : 'bg-accent';
+  const widthPct = Math.min(100, prog.pct);
+  return card(`
+    <div class="p-5">
+      <div class="flex items-start justify-between mb-1">
+        <div>
+          <p class="text-sm font-semibold">${escapeHtml(b.label)}</p>
+          <p class="text-xs text-zinc-400 dark:text-zinc-500 capitalize">${b.period} · ${b.category==='all'?'All categories':b.category}</p>
+        </div>
+        <div class="flex items-center gap-1">
+          <button data-edit-budget="${b.id}" class="p-1.5 rounded-md text-zinc-400 hover:text-accent hover:bg-accent/10 transition">${icon('edit','w-3.5 h-3.5')}</button>
+          <button data-del-budget="${b.id}" class="p-1.5 rounded-md text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition">${icon('trash','w-3.5 h-3.5')}</button>
+        </div>
+      </div>
+      <div class="mt-4">
+        <div class="flex items-baseline justify-between mb-1.5">
+          <span class="text-lg font-semibold num-tabular">${fmtMoney(prog.spent)}</span>
+          <span class="text-xs text-zinc-400 num-tabular">of ${fmtMoney(b.amount)}</span>
+        </div>
+        <div class="h-2 rounded-md bg-zinc-100 dark:bg-zinc-700/60 overflow-hidden">
+          <div class="h-full ${barColor} rounded-md transition-all duration-300" style="width:${widthPct}%"></div>
+        </div>
+        <p class="mt-2 text-xs ${prog.status==='over'?'text-red-500':prog.status==='warn'?'text-amber-500':'text-zinc-400 dark:text-zinc-500'}">
+          ${prog.status==='over' ? `Exceeded by ${fmtMoney(prog.spent-b.amount)}` : prog.status==='warn' ? `${prog.pct.toFixed(0)}% used — approaching limit` : `${fmtMoney(Math.max(0,b.amount-prog.spent))} remaining`}
+        </p>
+      </div>
+    </div>
+  `);
+}
+
+function renderSettings(){
+  return `
+  <div class="space-y-5 fade-in max-w-xl">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Settings</h1>
+      <p class="text-sm text-zinc-500 dark:text-zinc-400">Preferences for your tracker.</p>
+    </div>
+    ${card(`
+      <div class="p-5 flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium">Appearance</p>
+          <p class="text-xs text-zinc-400 dark:text-zinc-500">Switch between light and dark theme.</p>
+        </div>
+        <button id="theme-toggle-settings" class="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-zinc-200 dark:border-zinc-700 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-white/5 transition">
+          ${icon(state.theme==='dark'?'moon':'sun','w-4 h-4')}<span>${state.theme==='dark'?'Dark':'Light'}</span>
+        </button>
+      </div>
+    `)}
+    ${card(`
+      <div class="p-5">
+        <p class="text-sm font-medium mb-1">Data</p>
+        <p class="text-xs text-zinc-400 dark:text-zinc-500 mb-3">${state.expenses.length} expenses · ${state.income.length} income entries · ${state.budgets.length} budgets. Stored only in this browser.</p>
+        <button id="clear-data" class="text-sm font-medium text-red-500 hover:text-red-600 transition">Clear all data</button>
+      </div>
+    `)}
+  </div>`;
+}
+
+/* ============================= MODALS ============================= */
+function modalShell(title, bodyHtml, footerHtml){
+  return `
+  <div id="modal-backdrop" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4 fade-in">
+    <div class="w-full sm:max-w-md bg-white dark:bg-surface rounded-t-md sm:rounded-md border border-zinc-200 dark:border-zinc-700 shadow-xl max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-zinc-100 dark:border-zinc-700/60">
+        <h3 class="text-sm font-semibold">${title}</h3>
+        <button id="modal-close" class="p-1 rounded-md text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/5 transition">${icon('close','w-4 h-4')}</button>
+      </div>
+      <div class="px-5 py-4 overflow-y-auto space-y-3">${bodyHtml}</div>
+      <div class="px-5 py-4 border-t border-zinc-100 dark:border-zinc-700/60 flex justify-end gap-2">${footerHtml}</div>
+    </div>
+  </div>`;
+}
+function fieldLabel(t){ return `<label class="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">${t}</label>`; }
+function textInput(id, value, placeholder='', type='text', extra=''){
+  return `<input id="${id}" type="${type}" value="${value==null?'':escapeHtml(String(value))}" placeholder="${placeholder}" ${extra}
+    class="w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/60 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition"/>`;
+}
+function btnPrimary(id, label){ return `<button id="${id}" class="px-4 py-2 rounded-md bg-accent hover:bg-accent-dark text-white text-sm font-medium transition shadow-sm">${label}</button>`; }
+function btnGhost(id, label){ return `<button id="${id}" class="px-4 py-2 rounded-md text-sm font-medium text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 transition">${label}</button>`; }
+function errBox(id){ return `<p id="${id}" class="text-xs text-red-500 hidden"></p>`; }
+
+function renderModal(){
+  const m = state.modal;
+  if(!m) return '';
+  if(m.type==='add-expense' || m.type==='edit-expense'){
+    const e = m.payload || { amount:'', description:'', category:CATEGORIES[0], date:todayISO(), notes:'' };
+    return modalShell(m.type==='edit-expense'?'Edit Expense':'Add Expense', `
+      <div>${fieldLabel('Amount (₹)')}${textInput('f-amount', e.amount, '0.00', 'number')}</div>
+      <div>${fieldLabel('Description')}${textInput('f-desc', e.description, 'e.g. Canteen lunch')}</div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>${fieldLabel('Category')}${selectField('f-category', CATEGORIES.map(c=>({value:c,label:c})), e.category)}</div>
+        <div>${fieldLabel('Date')}${textInput('f-date', e.date, '', 'date')}</div>
+      </div>
+      <div>${fieldLabel('Notes (optional)')}${textInput('f-notes', e.notes, 'Add a note...')}</div>
+      ${errBox('f-err')}
+    `, `${btnGhost('modal-cancel','Cancel')}${btnPrimary('f-save', m.type==='edit-expense'?'Save Changes':'Add Expense')}`);
+  }
+  if(m.type==='add-income' || m.type==='edit-income'){
+    const i = m.payload || { amount:'', source:INCOME_SOURCES[0], date:todayISO(), note:'' };
+    return modalShell(m.type==='edit-income'?'Edit Income':'Add Income', `
+      <div>${fieldLabel('Amount (₹)')}${textInput('f-amount', i.amount, '0.00', 'number')}</div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>${fieldLabel('Source')}${selectField('f-source', INCOME_SOURCES.map(s=>({value:s,label:s})), i.source)}</div>
+        <div>${fieldLabel('Date')}${textInput('f-date', i.date, '', 'date')}</div>
+      </div>
+      <div>${fieldLabel('Note (optional)')}${textInput('f-note', i.note, 'Add a note...')}</div>
+      ${errBox('f-err')}
+    `, `${btnGhost('modal-cancel','Cancel')}${btnPrimary('f-save', m.type==='edit-income'?'Save Changes':'Add Income')}`);
+  }
+  if(m.type==='add-budget' || m.type==='edit-budget'){
+    const b = m.payload || { label:'', amount:'', period:'monthly', category:'all' };
+    return modalShell(m.type==='edit-budget'?'Edit Budget':'Add Budget', `
+      <div>${fieldLabel('Label')}${textInput('f-label', b.label, 'e.g. Monthly spending limit')}</div>
+      <div>${fieldLabel('Amount (₹)')}${textInput('f-amount', b.amount, '0.00', 'number')}</div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>${fieldLabel('Period')}${selectField('f-period', [{value:'weekly',label:'Weekly'},{value:'monthly',label:'Monthly'}], b.period)}</div>
+        <div>${fieldLabel('Category')}${selectField('f-category', [{value:'all',label:'All categories'},...CATEGORIES.map(c=>({value:c,label:c}))], b.category)}</div>
+      </div>
+      ${errBox('f-err')}
+    `, `${btnGhost('modal-cancel','Cancel')}${btnPrimary('f-save', m.type==='edit-budget'?'Save Changes':'Add Budget')}`);
+  }
+  if(m.type==='confirm-delete'){
+    return modalShell('Delete this?', `<p class="text-sm text-zinc-500 dark:text-zinc-400">This action can't be undone. Are you sure you want to delete "${escapeHtml(m.payload.label)}"?</p>`,
+      `${btnGhost('modal-cancel','Cancel')}<button id="confirm-del" class="px-4 py-2 rounded-md bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition">Delete</button>`);
+  }
+  return '';
+}
+
+/* ============================= LAYOUT ============================= */
+function renderSidebarContent(){
+  return `
+    <div class="flex items-center gap-2.5 px-3 py-4 mb-2">
+      <span class="w-8 h-8 rounded-md bg-accent text-white flex items-center justify-center">${icon('logo','w-4 h-4')}</span>
+      <span class="font-semibold tracking-tight">Wallet</span>
+    </div>
+    <nav class="flex-1 space-y-1 px-0">
+      ${navItem('dashboard','Dashboard','grid')}
+      ${navItem('expenses','Expenses','list')}
+      ${navItem('income','Income','trend')}
+      ${navItem('budgets','Budgets','target')}
+      ${navItem('settings','Settings','gear')}
+    </nav>
+    <button id="theme-toggle" class="mt-2 flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-100 transition">
+      ${icon(state.theme==='dark'?'sun':'moon','w-[18px] h-[18px]')}<span>${state.theme==='dark'?'Light mode':'Dark mode'}</span>
+    </button>
+  `;
+}
+
+function renderApp(){
+  const html = document.documentElement;
+  html.classList.toggle('dark', state.theme==='dark');
+
+  let viewHtml = '';
+  if(state.view==='dashboard') viewHtml = renderDashboard();
+  else if(state.view==='expenses') viewHtml = renderExpenses();
+  else if(state.view==='income') viewHtml = renderIncome();
+  else if(state.view==='budgets') viewHtml = renderBudgets();
+  else if(state.view==='settings') viewHtml = renderSettings();
+
+  document.getElementById('app').innerHTML = `
+    <aside class="hidden md:flex flex-col w-60 shrink-0 border-r border-zinc-200 dark:border-zinc-700/60 bg-white/60 dark:bg-surface-dark/60 glass px-3 py-2">
+      ${renderSidebarContent()}
+    </aside>
+
+    <div class="flex-1 flex flex-col min-w-0">
+      <header class="md:hidden flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700/60 bg-white/70 dark:bg-surface-dark/70 glass sticky top-0 z-30">
+        <div class="flex items-center gap-2">
+          <span class="w-7 h-7 rounded-md bg-accent text-white flex items-center justify-center">${icon('logo','w-3.5 h-3.5')}</span>
+          <span class="font-semibold text-sm">Wallet</span>
+        </div>
+        <button id="theme-toggle-mobile" class="p-2 rounded-md text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 transition">
+          ${icon(state.theme==='dark'?'sun':'moon','w-4 h-4')}
+        </button>
+      </header>
+
+      <main class="flex-1 px-4 sm:px-6 py-6 pb-24 md:pb-6">${viewHtml}</main>
+
+      <nav class="md:hidden fixed bottom-0 left-0 right-0 z-30 flex justify-around items-center bg-white/85 dark:bg-surface-dark/85 glass border-t border-zinc-200 dark:border-zinc-700/60 py-2">
+        ${['dashboard','expenses','income','budgets','settings'].map(id=>{
+          const map = {dashboard:'grid',expenses:'list',income:'trend',budgets:'target',settings:'gear'};
+          const active = state.view===id;
+          return `<button data-nav="${id}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-md text-[10px] font-medium ${active?'text-accent':'text-zinc-400'}">
+            ${icon(map[id],'w-5 h-5')}<span class="capitalize">${id}</span>
+          </button>`;
+        }).join('')}
+      </nav>
+    </div>
+
+    ${renderModal()}
+    ${state.toast ? `<div class="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-[60] fade-in">
+      <div class="flex items-center gap-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium px-4 py-2.5 rounded-md shadow-lg">
+        ${icon('check','w-4 h-4')}${state.toast}
+      </div>
+    </div>` : ''}
+  `;
+  attachEvents();
+}
+
+/* ============================= EVENTS ============================= */
+function showToast(msg){
+  state.toast = msg;
+  renderApp();
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(()=>{ state.toast=null; renderApp(); }, 2200);
+}
+
+function closeModal(){ state.modal=null; renderApp(); }
+function openModal(type, payload=null){ state.modal = {type, payload}; renderApp(); }
+
+function validateNumber(id){
+  const el = document.getElementById(id);
+  const v = parseFloat(el.value);
+  return isNaN(v) || v<=0 ? null : v;
+}
+
+function saveExpenseFromModal(){
+  const amount = validateNumber('f-amount');
+  const desc = document.getElementById('f-desc').value.trim();
+  const date = document.getElementById('f-date').value;
+  const errEl = document.getElementById('f-err');
+  if(!amount || !desc || !date){
+    errEl.textContent = 'Please enter a valid amount, description and date.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  const category = document.getElementById('f-category').value;
+  const notes = document.getElementById('f-notes').value.trim();
+  const m = state.modal;
+  if(m.type==='edit-expense'){
+    const idx = state.expenses.findIndex(e=>e.id===m.payload.id);
+    state.expenses[idx] = {...m.payload, amount, description:desc, category, date, notes};
+    showToast('Expense updated');
+  } else {
+    state.expenses.push({id:uid(), amount, description:desc, category, date, notes});
+    showToast('Expense added');
+  }
+  persist(); closeModal();
+}
+
+function saveIncomeFromModal(){
+  const amount = validateNumber('f-amount');
+  const date = document.getElementById('f-date').value;
+  const errEl = document.getElementById('f-err');
+  if(!amount || !date){
+    errEl.textContent = 'Please enter a valid amount and date.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  const source = document.getElementById('f-source').value;
+  const note = document.getElementById('f-note').value.trim();
+  const m = state.modal;
+  if(m.type==='edit-income'){
+    const idx = state.income.findIndex(i=>i.id===m.payload.id);
+    state.income[idx] = {...m.payload, amount, source, date, note};
+    showToast('Income updated');
+  } else {
+    state.income.push({id:uid(), amount, source, date, note});
+    showToast('Income added');
+  }
+  persist(); closeModal();
+}
+
+function saveBudgetFromModal(){
+  const amount = validateNumber('f-amount');
+  const label = document.getElementById('f-label').value.trim();
+  const errEl = document.getElementById('f-err');
+  if(!amount || !label){
+    errEl.textContent = 'Please enter a valid label and amount.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  const period = document.getElementById('f-period').value;
+  const category = document.getElementById('f-category').value;
+  const m = state.modal;
+  if(m.type==='edit-budget'){
+    const idx = state.budgets.findIndex(b=>b.id===m.payload.id);
+    state.budgets[idx] = {...m.payload, amount, label, period, category};
+    showToast('Budget updated');
+  } else {
+    state.budgets.push({id:uid(), amount, label, period, category});
+    showToast('Budget created');
+  }
+  persist(); closeModal();
+}
+
+function attachEvents(){
+  const app = document.getElementById('app');
+
+  app.querySelectorAll('[data-nav]').forEach(el=>el.addEventListener('click', ()=>{
+    state.view = el.dataset.nav; state.modal=null; renderApp();
+  }));
+
+  const themeBtns = ['theme-toggle','theme-toggle-mobile','theme-toggle-settings'];
+  themeBtns.forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('click', ()=>{ state.theme = state.theme==='dark'?'light':'dark'; persist(); renderApp(); });
+  });
+
+  const clearBtn = document.getElementById('clear-data');
+  if(clearBtn) clearBtn.addEventListener('click', ()=>{
+    openModal('confirm-delete', {label:'all your data', onConfirm:'clear-all'});
+  });
+
+  // Dashboard period
+  const dp = document.getElementById('dash-period');
+  if(dp) dp.addEventListener('change', e=>{ state.dashPeriod = e.target.value; renderApp(); });
+
+  // History filters
+  const hs = document.getElementById('hist-search');
+  if(hs){
+    hs.addEventListener('input', e=>{ state.histFilters.search = e.target.value; renderExpensesOnly(); });
+    hs.focus(); hs.setSelectionRange(hs.value.length, hs.value.length);
+  }
+  const hc = document.getElementById('hist-category');
+  if(hc) hc.addEventListener('change', e=>{ state.histFilters.category = e.target.value; renderApp(); });
+  const hp = document.getElementById('hist-period');
+  if(hp) hp.addEventListener('change', e=>{ state.histFilters.period = e.target.value; renderApp(); });
+  const hstart = document.getElementById('hist-start');
+  if(hstart) hstart.addEventListener('change', e=>{ state.histFilters.start = e.target.value; renderApp(); });
+  const hend = document.getElementById('hist-end');
+  if(hend) hend.addEventListener('change', e=>{ state.histFilters.end = e.target.value; renderApp(); });
+
+  // Open modals
+  app.querySelectorAll('[data-open-modal]').forEach(el=>el.addEventListener('click', ()=>openModal(el.dataset.openModal)));
+  app.querySelectorAll('[data-edit-expense]').forEach(el=>el.addEventListener('click', ()=>{
+    const item = state.expenses.find(e=>e.id===el.dataset.editExpense);
+    openModal('edit-expense', item);
+  }));
+  app.querySelectorAll('[data-edit-income]').forEach(el=>el.addEventListener('click', ()=>{
+    const item = state.income.find(i=>i.id===el.dataset.editIncome);
+    openModal('edit-income', item);
+  }));
+  app.querySelectorAll('[data-edit-budget]').forEach(el=>el.addEventListener('click', ()=>{
+    const item = state.budgets.find(b=>b.id===el.dataset.editBudget);
+    openModal('edit-budget', item);
+  }));
+  app.querySelectorAll('[data-del-expense]').forEach(el=>el.addEventListener('click', ()=>{
+    const item = state.expenses.find(e=>e.id===el.dataset.delExpense);
+    openModal('confirm-delete', {label:item.description, kind:'expense', id:item.id});
+  }));
+  app.querySelectorAll('[data-del-income]').forEach(el=>el.addEventListener('click', ()=>{
+    const item = state.income.find(i=>i.id===el.dataset.delIncome);
+    openModal('confirm-delete', {label:item.source, kind:'income', id:item.id});
+  }));
+  app.querySelectorAll('[data-del-budget]').forEach(el=>el.addEventListener('click', ()=>{
+    const item = state.budgets.find(b=>b.id===el.dataset.delBudget);
+    openModal('confirm-delete', {label:item.label, kind:'budget', id:item.id});
+  }));
+
+  // Modal internal
+  const backdrop = document.getElementById('modal-backdrop');
+  if(backdrop){
+    backdrop.addEventListener('click', e=>{ if(e.target===backdrop) closeModal(); });
+    const closeBtn = document.getElementById('modal-close'); if(closeBtn) closeBtn.addEventListener('click', closeModal);
+    const cancelBtn = document.getElementById('modal-cancel'); if(cancelBtn) cancelBtn.addEventListener('click', closeModal);
+    const saveBtn = document.getElementById('f-save');
+    if(saveBtn){
+      saveBtn.addEventListener('click', ()=>{
+        const t = state.modal.type;
+        if(t.includes('expense')) saveExpenseFromModal();
+        else if(t.includes('income')) saveIncomeFromModal();
+        else if(t.includes('budget')) saveBudgetFromModal();
+      });
+    }
+    const confirmDel = document.getElementById('confirm-del');
+    if(confirmDel) confirmDel.addEventListener('click', ()=>{
+      const p = state.modal.payload;
+      if(p.kind==='expense'){ state.expenses = state.expenses.filter(e=>e.id!==p.id); showToast('Expense deleted'); }
+      else if(p.kind==='income'){ state.income = state.income.filter(i=>i.id!==p.id); showToast('Income deleted'); }
+      else if(p.kind==='budget'){ state.budgets = state.budgets.filter(b=>b.id!==p.id); showToast('Budget deleted'); }
+      else if(p.onConfirm==='clear-all'){
+        state.expenses=[]; state.income=[]; state.budgets=[];
+        showToast('All data cleared');
+      }
+      persist(); closeModal();
+    });
+  }
+}
+
+// lightweight partial re-render for search input (keeps focus)
+function renderExpensesOnly(){
+  document.querySelector('main').innerHTML = renderExpenses();
+  attachEvents();
+  const hs = document.getElementById('hist-search');
+  if(hs){ hs.focus(); hs.setSelectionRange(hs.value.length, hs.value.length); }
+}
+
+/* ============================= INIT ============================= */
+renderApp();
+</script>
+</body>
+</html>
