@@ -2,819 +2,912 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Wallet — Student Expense Tracker</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💸</text></svg>">
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="/output.css">
-<script>
-  tailwind.config = {
-    darkMode: 'class',
-    theme: {
-      extend: {
-        colors: {
-          surface: { DEFAULT: '#353535', light: '#3f3f3f', dark: '#262626' },
-          accent: { DEFAULT: '#4f46e5', light: '#6366f1', dark: '#4338ca' }
-        },
-        fontFamily: { sans: ['-apple-system','BlinkMacSystemFont','"Segoe UI"','Inter','Roboto','sans-serif'] }
-      }
-    }
-  }
-</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  * { -webkit-font-smoothing: antialiased; }
-  html { scroll-behavior: smooth; }
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-thumb { background: rgba(120,120,120,.35); border-radius: 8px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  .glass { backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
-  .fade-in { animation: fadeIn .25s ease both; }
-  @keyframes fadeIn { from { opacity:0; transform: translateY(4px);} to {opacity:1; transform:none;} }
-  .num-tabular { font-variant-numeric: tabular-nums; }
-  input[type=date]::-webkit-calendar-picker-indicator { opacity: .6; cursor: pointer; }
-  .dark input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1); opacity:.6; }
-  ::placeholder { opacity: .55; }
+:root{
+  --ink:#1a1625; --ink-2:#584f6b; --ink-3:#8b81a3;
+  --bg:#f6f4fb; --bg-2:#ffffff; --line:rgba(26,22,37,.09);
+  --grape:#6d3df5; --grape-2:#9b5cff;
+  --punch:#ff4d6d; --mango:#ff9f1c; --mint:#00c2a8; --sky:#2e9bff; --lilac:#c56cff;
+  --shadow:0 1px 2px rgba(26,22,37,.05), 0 12px 32px -12px rgba(26,22,37,.16);
+  --shadow-lg:0 2px 4px rgba(26,22,37,.06), 0 24px 48px -16px rgba(64,30,140,.28);
+  --r:20px; --r-sm:14px;
+  --glow-1:rgba(155,92,255,.30); --glow-2:rgba(255,77,109,.22); --glow-3:rgba(0,194,168,.22);
+}
+html.dark{
+  --ink:#f3f0fa; --ink-2:#b5acc9; --ink-3:#7f7596;
+  --bg:#0e0b17; --bg-2:#181328; --line:rgba(255,255,255,.09);
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 16px 40px -16px rgba(0,0,0,.7);
+  --shadow-lg:0 2px 6px rgba(0,0,0,.5), 0 28px 56px -18px rgba(0,0,0,.8);
+  --glow-1:rgba(155,92,255,.34); --glow-2:rgba(255,77,109,.22); --glow-3:rgba(0,194,168,.20);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{
+  font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:var(--bg); color:var(--ink); min-height:100vh; overflow-x:hidden;
+  transition:background .3s,color .3s;
+}
+body::before{
+  content:''; position:fixed; inset:-20%; z-index:-1; pointer-events:none;
+  background:
+    radial-gradient(42vw 42vw at 8% 2%, var(--glow-1), transparent 62%),
+    radial-gradient(38vw 38vw at 96% 12%, var(--glow-2), transparent 60%),
+    radial-gradient(44vw 44vw at 50% 100%, var(--glow-3), transparent 62%);
+  filter:blur(18px);
+}
+h1,h2,h3,.display{font-family:'Bricolage Grotesque',Inter,sans-serif;letter-spacing:-.025em}
+.tnum{font-variant-numeric:tabular-nums}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--ink-3);opacity:.4;border-radius:9px}
+::-webkit-scrollbar-track{background:transparent}
+::placeholder{color:var(--ink-3)}
+input,select,button,textarea{font-family:inherit;font-size:inherit;color:inherit}
+input[type=date]::-webkit-calendar-picker-indicator{opacity:.55;cursor:pointer}
+.dark input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.6}
+svg{display:block}
+
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes pop{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.rise{animation:rise .35s cubic-bezier(.2,.8,.3,1) both}
+.rise>*{animation:rise .4s cubic-bezier(.2,.8,.3,1) both}
+.rise>*:nth-child(2){animation-delay:.04s}
+.rise>*:nth-child(3){animation-delay:.08s}
+.rise>*:nth-child(4){animation-delay:.12s}
+.rise>*:nth-child(5){animation-delay:.16s}
+
+/* ---------- shell ---------- */
+.shell{display:flex;min-height:100vh}
+.side{
+  display:none; width:252px; flex-shrink:0; flex-direction:column; gap:4px;
+  padding:20px 14px; position:sticky; top:0; height:100vh;
+  border-right:1px solid var(--line);
+  background:linear-gradient(180deg, color-mix(in srgb, var(--bg-2) 72%, transparent), color-mix(in srgb, var(--bg-2) 30%, transparent));
+  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+}
+@media(min-width:900px){.side{display:flex}}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.content{
+  flex:1;width:100%;max-width:1180px;margin:0 auto;
+  padding:18px 16px calc(104px + env(safe-area-inset-bottom));
+}
+@media(min-width:640px){.content{padding:26px 24px 40px}}
+@media(min-width:900px){.content{padding:32px 34px 40px}}
+
+/* ---------- brand ---------- */
+.brand{display:flex;align-items:center;gap:11px;padding:6px 8px 20px}
+.brand-mark{
+  width:38px;height:38px;border-radius:13px;flex-shrink:0;
+  display:grid;place-items:center;color:#fff;
+  background:linear-gradient(140deg,var(--grape-2),var(--grape) 45%,var(--punch));
+  box-shadow:0 8px 20px -6px rgba(109,61,245,.6);
+}
+.brand-mark svg{width:19px;height:19px}
+.brand-name{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:19px;letter-spacing:-.03em}
+
+/* ---------- nav ---------- */
+.nav-btn{
+  display:flex;align-items:center;gap:12px;width:100%;
+  padding:11px 13px;border:0;border-radius:13px;cursor:pointer;
+  background:transparent;color:var(--ink-2);font-weight:600;font-size:14.5px;
+  transition:background .18s,color .18s,transform .18s;
+}
+.nav-btn svg{width:19px;height:19px}
+.nav-btn:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+.nav-btn.on{
+  color:#fff;
+  background:linear-gradient(120deg,var(--grape),var(--grape-2));
+  box-shadow:0 10px 22px -10px rgba(109,61,245,.75);
+}
+.nav-btn.on:hover{transform:translateY(-1px)}
+
+/* ---------- topbar (mobile) ---------- */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:12px 16px calc(12px); position:sticky;top:0;z-index:30;
+  border-bottom:1px solid var(--line);
+  background:color-mix(in srgb,var(--bg) 80%,transparent);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  padding-top:calc(12px + env(safe-area-inset-top));
+}
+@media(min-width:900px){.topbar{display:none}}
+
+/* ---------- tabbar (mobile) ---------- */
+.tabbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:40;
+  display:grid;grid-template-columns:repeat(5,1fr);
+  padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--line);
+  background:color-mix(in srgb,var(--bg-2) 86%,transparent);
+  backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);
+}
+@media(min-width:900px){.tabbar{display:none}}
+.tab{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  border:0;background:transparent;cursor:pointer;padding:6px 2px;border-radius:12px;
+  font-size:10.5px;font-weight:600;color:var(--ink-3);transition:color .18s;
+}
+.tab svg{width:21px;height:21px}
+.tab.on{color:var(--grape)}
+html.dark .tab.on{color:var(--grape-2)}
+.tab.on .tab-ico{
+  background:linear-gradient(130deg,var(--grape),var(--lilac));color:#fff;
+  box-shadow:0 8px 18px -8px rgba(109,61,245,.8);
+}
+.tab-ico{padding:5px 13px;border-radius:12px;transition:background .2s,color .2s}
+
+/* ---------- cards ---------- */
+.card{
+  border-radius:var(--r);border:1px solid var(--line);
+  background:color-mix(in srgb,var(--bg-2) 82%,transparent);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  box-shadow:var(--shadow);
+}
+.pad{padding:18px}
+@media(min-width:640px){.pad{padding:22px}}
+
+.hero{
+  position:relative;overflow:hidden;color:#fff;border:0;
+  border-radius:24px;padding:22px;
+  background:linear-gradient(135deg,#7c3ff7 0%,#a855f7 42%,#ff4d6d 100%);
+  box-shadow:var(--shadow-lg);
+}
+@media(min-width:640px){.hero{padding:28px}}
+.hero::after{
+  content:'';position:absolute;right:-70px;top:-90px;width:280px;height:280px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.28),transparent 68%);
+}
+.hero::before{
+  content:'';position:absolute;left:-50px;bottom:-110px;width:230px;height:230px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,193,61,.4),transparent 66%);
+}
+.hero>*{position:relative;z-index:1}
+
+/* ---------- stats ---------- */
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(min-width:900px){.stat-grid{grid-template-columns:repeat(4,1fr);gap:16px}}
+.stat{
+  position:relative;overflow:hidden;border-radius:var(--r);padding:16px;
+  border:1px solid var(--line);box-shadow:var(--shadow);
+  background:color-mix(in srgb,var(--bg-2) 86%,transparent);
+  transition:transform .22s,box-shadow .22s;
+}
+@media(min-width:640px){.stat{padding:19px}}
+.stat:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.stat-bar{position:absolute;inset:0 0 auto 0;height:4px}
+.stat-lbl{font-size:11.5px;font-weight:600;color:var(--ink-3);letter-spacing:.02em}
+.stat-val{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:22px;letter-spacing:-.035em;margin-top:8px;line-height:1.1}
+@media(min-width:640px){.stat-val{font-size:27px}}
+.stat-sub{font-size:11px;color:var(--ink-3);margin-top:5px}
+.chip-ico{width:32px;height:32px;border-radius:11px;display:grid;place-items:center;flex-shrink:0}
+.chip-ico svg{width:16px;height:16px}
+
+/* ---------- misc ---------- */
+.row-between{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.h-title{font-size:23px;font-weight:800;letter-spacing:-.035em}
+@media(min-width:640px){.h-title{font-size:28px}}
+.h-sub{font-size:13.5px;color:var(--ink-2);margin-top:3px}
+.sec-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:15px;letter-spacing:-.02em}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:11px 18px;border:0;border-radius:13px;cursor:pointer;
+  font-weight:650;font-size:14px;transition:transform .18s,box-shadow .18s,filter .18s;
+}
+.btn svg{width:16px;height:16px}
+.btn:active{transform:scale(.97)}
+.btn-grad{
+  color:#fff;background:linear-gradient(120deg,var(--grape),var(--lilac) 60%,var(--punch));
+  box-shadow:0 10px 24px -10px rgba(109,61,245,.8);
+}
+.btn-grad:hover{filter:brightness(1.07);transform:translateY(-2px)}
+.btn-soft{background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink-2)}
+.btn-soft:hover{background:color-mix(in srgb,var(--ink) 11%,transparent);color:var(--ink)}
+.btn-red{color:#fff;background:linear-gradient(120deg,#ff4d6d,#e11d48);box-shadow:0 10px 24px -10px rgba(225,29,72,.7)}
+.icon-btn{
+  width:38px;height:38px;border-radius:12px;border:1px solid var(--line);
+  background:color-mix(in srgb,var(--bg-2) 70%,transparent);
+  display:grid;place-items:center;cursor:pointer;color:var(--ink-2);transition:all .18s;
+}
+.icon-btn svg{width:17px;height:17px}
+.icon-btn:hover{color:var(--ink);transform:translateY(-1px)}
+.mini-btn{
+  width:30px;height:30px;border-radius:10px;border:0;background:transparent;
+  display:grid;place-items:center;cursor:pointer;color:var(--ink-3);transition:all .16s;
+}
+.mini-btn svg{width:15px;height:15px}
+.mini-btn:hover{background:color-mix(in srgb,var(--grape) 14%,transparent);color:var(--grape)}
+.mini-btn.danger:hover{background:rgba(255,77,109,.15);color:var(--punch)}
+
+.field{
+  width:100%;padding:11px 13px;border-radius:13px;
+  border:1px solid var(--line);background:color-mix(in srgb,var(--bg-2) 70%,transparent);
+  font-size:14px;outline:none;transition:border-color .18s,box-shadow .18s;
+}
+.field:focus{border-color:var(--grape);box-shadow:0 0 0 3.5px color-mix(in srgb,var(--grape) 18%,transparent)}
+select.field{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),linear-gradient(135deg,var(--ink-3) 50%,transparent 50%);background-position:calc(100% - 17px) 50%,calc(100% - 12px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:34px}
+.f-lbl{display:block;font-size:11.5px;font-weight:650;color:var(--ink-3);margin-bottom:6px;letter-spacing:.02em}
+
+.list>*+*{border-top:1px solid var(--line)}
+.item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0}
+.item-l{display:flex;align-items:center;gap:12px;min-width:0;flex:1}
+.avatar{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;flex-shrink:0;font-size:17px}
+.item-name{font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-meta{font-size:11.5px;color:var(--ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-amt{font-weight:750;font-size:15px;white-space:nowrap}
+.acts{display:flex;gap:2px;opacity:1}
+@media(hover:hover){.acts{opacity:0;transition:opacity .18s}.item:hover .acts{opacity:1}}
+
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:46px 20px;color:var(--ink-3)}
+.empty-ico{width:56px;height:56px;border-radius:18px;display:grid;place-items:center;margin-bottom:14px;background:linear-gradient(135deg,color-mix(in srgb,var(--grape) 16%,transparent),color-mix(in srgb,var(--punch) 14%,transparent));color:var(--grape)}
+.empty-ico svg{width:24px;height:24px}
+.empty-t{font-weight:650;font-size:14.5px;color:var(--ink-2)}
+.empty-s{font-size:12.5px;margin-top:5px;max-width:280px}
+
+.alert{display:flex;align-items:flex-start;gap:11px;padding:13px 16px;border-radius:var(--r-sm);font-size:13.5px;font-weight:550;line-height:1.45}
+.alert svg{width:17px;height:17px;flex-shrink:0;margin-top:1px}
+.alert.over{background:linear-gradient(110deg,rgba(255,77,109,.16),rgba(255,77,109,.07));color:#e11d48;border:1px solid rgba(255,77,109,.3)}
+.alert.warn{background:linear-gradient(110deg,rgba(255,159,28,.18),rgba(255,159,28,.07));color:#d97706;border:1px solid rgba(255,159,28,.32)}
+html.dark .alert.over{color:#ff8fa3}
+html.dark .alert.warn{color:#fcbf59}
+
+.split{display:grid;gap:14px}
+@media(min-width:1020px){.split{grid-template-columns:5fr 7fr;gap:16px}}
+
+.legend-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13.5px;padding:5px 0}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.pct{font-size:11px;font-weight:600;color:var(--ink-3);padding:2px 7px;border-radius:7px;background:color-mix(in srgb,var(--ink) 7%,transparent)}
+
+.bcard{border-radius:var(--r);border:1px solid var(--line);box-shadow:var(--shadow);overflow:hidden;background:color-mix(in srgb,var(--bg-2) 86%,transparent);transition:transform .22s,box-shadow .22s}
+.bcard:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.track{height:9px;border-radius:9px;overflow:hidden;background:color-mix(in srgb,var(--ink) 9%,transparent)}
+.track>div{height:100%;border-radius:9px;transform-origin:left;animation:grow .55s cubic-bezier(.2,.8,.3,1) both}
+
+.filters{display:flex;flex-wrap:wrap;gap:10px}
+.filters>*{flex:1 1 150px;min-width:0}
+.search-wrap{position:relative;flex:1 1 100%}
+@media(min-width:640px){.search-wrap{flex:2 1 220px}}
+.search-wrap svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--ink-3)}
+.search-wrap .field{padding-left:38px}
+
+/* ---------- modal ---------- */
+.backdrop{position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center;background:rgba(14,11,23,.55);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);animation:rise .2s both}
+@media(min-width:640px){.backdrop{align-items:center;padding:20px}}
+.sheet{
+  width:100%;max-width:440px;max-height:92vh;display:flex;flex-direction:column;
+  background:var(--bg-2);border:1px solid var(--line);
+  border-radius:26px 26px 0 0;box-shadow:var(--shadow-lg);
+  animation:pop .3s cubic-bezier(.2,.9,.3,1) both;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+@media(min-width:640px){.sheet{border-radius:24px;padding-bottom:0}}
+.sheet-hd{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+.sheet-hd h3{font-size:17px;font-weight:700}
+.sheet-bd{padding:18px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+.sheet-ft{display:flex;gap:10px;padding:14px 20px 18px;border-top:1px solid var(--line)}
+.sheet-ft .btn{flex:1}
+.grab{width:38px;height:4px;border-radius:4px;background:var(--line);margin:9px auto -4px}
+@media(min-width:640px){.grab{display:none}}
+.err{font-size:12.5px;color:var(--punch);font-weight:600;display:none}
+
+.toast{
+  position:fixed;left:50%;transform:translateX(-50%);z-index:80;
+  bottom:calc(88px + env(safe-area-inset-bottom));
+  display:flex;align-items:center;gap:8px;padding:12px 20px;border-radius:15px;
+  color:#fff;font-size:13.5px;font-weight:650;
+  background:linear-gradient(120deg,var(--grape),var(--lilac));
+  box-shadow:0 16px 36px -12px rgba(109,61,245,.8);
+  animation:pop .3s cubic-bezier(.2,.9,.3,1) both;
+}
+.toast svg{width:16px;height:16px}
+@media(min-width:900px){.toast{bottom:28px}}
+.scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.scroll-x::-webkit-scrollbar{display:none}
 </style>
 </head>
-<body class="bg-zinc-50 dark:bg-surface-dark text-zinc-900 dark:text-zinc-100 min-h-screen transition-colors duration-200">
-
-<div id="app" class="flex min-h-screen"></div>
+<body>
+<div id="app" class="shell"></div>
 
 <script>
 /* ============================= STATE ============================= */
 const CATEGORIES = ['Food','Transport','Education','Shopping','Entertainment','Subscriptions','Health','Other'];
 const INCOME_SOURCES = ['Pocket Money','Salary','Scholarship','Other'];
 const CAT_COLORS = {
-  Food:'#f59e0b', Transport:'#3b82f6', Education:'#8b5cf6', Shopping:'#ec4899',
-  Entertainment:'#14b8a6', Subscriptions:'#6366f1', Health:'#ef4444', Other:'#71717a'
+  Food:'#ff9f1c', Transport:'#2e9bff', Education:'#9b5cff', Shopping:'#ff4d6d',
+  Entertainment:'#00c2a8', Subscriptions:'#6d3df5', Health:'#f43f5e', Other:'#8b81a3'
+};
+const CAT_EMOJI = {
+  Food:'🍜', Transport:'🚌', Education:'📚', Shopping:'🛍️',
+  Entertainment:'🎬', Subscriptions:'🔁', Health:'💊', Other:'✨'
 };
 
 const store = {
-  get(key, fallback){ try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch(e){ return fallback; } },
-  set(key, val){ try { localStorage.setItem(key, JSON.stringify(val)); } catch(e){} }
+  get(k,f){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):f; }catch(e){ return f; } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
 };
 
 let state = {
-  view: 'dashboard',
-  theme: store.get('wallet_theme', (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')),
+  view:'dashboard',
+  theme: store.get('wallet_theme', (matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')),
   expenses: store.get('wallet_expenses', []),
   income: store.get('wallet_income', []),
   budgets: store.get('wallet_budgets', []),
-  dashPeriod: 'month',
-  histFilters: { search:'', category:'all', period:'month', start:'', end:'' },
-  modal: null, // {type, payload}
-  toast: null
+  dashPeriod:'month',
+  histFilters:{search:'',category:'all',period:'month',start:'',end:''},
+  modal:null, toast:null
 };
 
 function persist(){
-  store.set('wallet_expenses', state.expenses);
-  store.set('wallet_income', state.income);
-  store.set('wallet_budgets', state.budgets);
-  store.set('wallet_theme', state.theme);
+  store.set('wallet_expenses',state.expenses);
+  store.set('wallet_income',state.income);
+  store.set('wallet_budgets',state.budgets);
+  store.set('wallet_theme',state.theme);
 }
-function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
-function todayISO(){ return new Date().toISOString().slice(0,10); }
-function fmtMoney(n){ return '₹' + Number(n||0).toLocaleString('en-IN', {maximumFractionDigits:2}); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function todayISO(){ const d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
+function fmtMoney(n){ return '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2}); }
+function fmtShort(n){
+  n=Number(n||0); const a=Math.abs(n);
+  if(a>=1e7) return '₹'+(n/1e7).toFixed(a>=1e8?0:1)+'Cr';
+  if(a>=1e5) return '₹'+(n/1e5).toFixed(a>=1e6?0:1)+'L';
+  if(a>=1e4) return '₹'+(n/1e3).toFixed(0)+'K';
+  return fmtMoney(n);
+}
 function fmtDate(d){ return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); }
+function esc(s){ const d=document.createElement('div'); d.innerText = s==null?'':s; return d.innerHTML; }
 
-/* ============================= PERIOD HELPERS ============================= */
-function startOfWeek(d){ const x=new Date(d); const day=x.getDay(); const diff=(day===0?-6:1-day); x.setDate(x.getDate()+diff); x.setHours(0,0,0,0); return x; }
+/* ============================= PERIOD ============================= */
+function startOfWeek(d){ const x=new Date(d); const day=x.getDay(); x.setDate(x.getDate()+(day===0?-6:1-day)); x.setHours(0,0,0,0); return x; }
 function periodRange(period, custom){
-  const now = new Date(); now.setHours(0,0,0,0);
-  if(period==='today') return { start: new Date(now), end: new Date(now) };
-  if(period==='week'){ const s = startOfWeek(now); const e = new Date(s); e.setDate(e.getDate()+6); return {start:s, end:e}; }
-  if(period==='month'){ const s=new Date(now.getFullYear(), now.getMonth(),1); const e=new Date(now.getFullYear(), now.getMonth()+1,0); return {start:s,end:e}; }
-  if(period==='custom' && custom && custom.start && custom.end) return { start:new Date(custom.start+'T00:00:00'), end:new Date(custom.end+'T00:00:00') };
-  if(period==='all') return { start:new Date(2000,0,1), end:new Date(2100,0,1) };
-  return { start:new Date(2000,0,1), end:new Date(2100,0,1) };
+  const now=new Date(); now.setHours(0,0,0,0);
+  if(period==='today') return {start:new Date(now),end:new Date(now)};
+  if(period==='week'){ const s=startOfWeek(now); const e=new Date(s); e.setDate(e.getDate()+6); return {start:s,end:e}; }
+  if(period==='month'){ return {start:new Date(now.getFullYear(),now.getMonth(),1), end:new Date(now.getFullYear(),now.getMonth()+1,0)}; }
+  if(period==='custom' && custom && custom.start && custom.end) return {start:new Date(custom.start+'T00:00:00'),end:new Date(custom.end+'T00:00:00')};
+  return {start:new Date(2000,0,1),end:new Date(2100,0,1)};
 }
-function inRange(dateStr, range){
-  const d = new Date(dateStr+'T00:00:00');
-  return d >= range.start && d <= range.end;
-}
-
-/* ============================= CALC HELPERS ============================= */
-function expensesIn(range){ return state.expenses.filter(e=>inRange(e.date, range)); }
-function incomeIn(range){ return state.income.filter(i=>inRange(i.date, range)); }
-function totalOf(arr){ return arr.reduce((s,x)=>s+Number(x.amount||0),0); }
+function inRange(ds,r){ const d=new Date(ds+'T00:00:00'); return d>=r.start && d<=r.end; }
+function expensesIn(r){ return state.expenses.filter(e=>inRange(e.date,r)); }
+function incomeIn(r){ return state.income.filter(i=>inRange(i.date,r)); }
+function totalOf(a){ return a.reduce((s,x)=>s+Number(x.amount||0),0); }
 function categoryBreakdown(arr){
-  const map = {}; CATEGORIES.forEach(c=>map[c]=0);
-  arr.forEach(e=>{ map[e.category]=(map[e.category]||0)+Number(e.amount); });
-  return Object.entries(map).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const m={}; arr.forEach(e=>{ m[e.category]=(m[e.category]||0)+Number(e.amount); });
+  return Object.entries(m).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
 }
 function spendOverTime(range){
-  // buckets by day for ranges <=31 days, else by week
-  const days = Math.round((range.end-range.start)/86400000)+1;
-  const buckets = [];
-  if(days<=31){
+  const days=Math.round((range.end-range.start)/86400000)+1;
+  const out=[];
+  if(days<=31 && days>0){
     for(let i=0;i<days;i++){
-      const d = new Date(range.start); d.setDate(d.getDate()+i);
-      const iso = d.toISOString().slice(0,10);
-      const sum = state.expenses.filter(e=>e.date===iso).reduce((s,e)=>s+Number(e.amount),0);
-      buckets.push({label: d.toLocaleDateString('en-IN',{day:'numeric',month:'short'}), value: sum});
+      const d=new Date(range.start); d.setDate(d.getDate()+i);
+      const iso=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+      out.push({label:d.toLocaleDateString('en-IN',{day:'numeric'}), full:d.toLocaleDateString('en-IN',{day:'numeric',month:'short'}),
+        value: state.expenses.filter(e=>e.date===iso).reduce((s,e)=>s+Number(e.amount),0)});
     }
   } else {
-    let cursor = new Date(range.start);
-    while(cursor<=range.end){
-      const wEnd = new Date(cursor); wEnd.setDate(wEnd.getDate()+6);
-      const sum = state.expenses.filter(e=>inRange(e.date,{start:cursor,end:wEnd})).reduce((s,e)=>s+Number(e.amount),0);
-      buckets.push({label: cursor.toLocaleDateString('en-IN',{day:'numeric',month:'short'}), value: sum});
-      cursor = new Date(wEnd); cursor.setDate(cursor.getDate()+1);
+    let c=new Date(range.start); let guard=0;
+    const first = state.expenses.length ? state.expenses.map(e=>e.date).sort()[0] : null;
+    if(range.start.getFullYear()<2005 && first) c=new Date(first+'T00:00:00');
+    const stop = range.end>new Date()? new Date(): range.end;
+    while(c<=stop && guard++<80){
+      const we=new Date(c); we.setDate(we.getDate()+6);
+      out.push({label:c.toLocaleDateString('en-IN',{day:'numeric',month:'short'}), full:c.toLocaleDateString('en-IN',{day:'numeric',month:'short'}),
+        value: state.expenses.filter(e=>inRange(e.date,{start:c,end:we})).reduce((s,e)=>s+Number(e.amount),0)});
+      c=new Date(we); c.setDate(c.getDate()+1);
     }
   }
-  return buckets;
+  return out;
 }
 function budgetProgress(b){
-  const range = periodRange(b.period==='weekly'?'week':'month');
-  const matching = state.expenses.filter(e => inRange(e.date, range) && (b.category==='all' || e.category===b.category));
-  const spent = totalOf(matching);
-  const pct = b.amount>0 ? Math.min(999, (spent/b.amount)*100) : 0;
-  return { spent, pct, range, status: pct>=100?'over':pct>=80?'warn':'ok' };
+  const range=periodRange(b.period==='weekly'?'week':'month');
+  const spent=totalOf(state.expenses.filter(e=>inRange(e.date,range)&&(b.category==='all'||e.category===b.category)));
+  const pct=b.amount>0?Math.min(999,(spent/b.amount)*100):0;
+  return {spent,pct,range,status:pct>=100?'over':pct>=80?'warn':'ok'};
 }
 
 /* ============================= ICONS ============================= */
-const ICONS = {
-  grid:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>`,
-  list:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
-  trend:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`,
-  target:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>`,
-  gear:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
-  sun:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><line x1="12" y1="1.5" x2="12" y2="3.5"/><line x1="12" y1="20.5" x2="12" y2="22.5"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1.5" y1="12" x2="3.5" y2="12"/><line x1="20.5" y1="12" x2="22.5" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></svg>`,
-  moon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/></svg>`,
-  plus:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
-  edit:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
-  trash:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`,
-  search:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
-  close:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
-  alert:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
-  wallet:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>`,
-  empty:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>`,
-  check:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
-  chevronDown:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
-  logo:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="14" rx="3"/><path d="M2 10h20"/><circle cx="17" cy="15" r="1.4" fill="currentColor" stroke="none"/></svg>`
+const I = {
+  grid:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="2.2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2.2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2.2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2.2"/></svg>`,
+  list:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="8.5" y1="6" x2="20" y2="6"/><line x1="8.5" y1="12" x2="20" y2="12"/><line x1="8.5" y1="18" x2="20" y2="18"/><circle cx="4.3" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.3" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.3" cy="18" r="1.3" fill="currentColor" stroke="none"/></svg>`,
+  trend:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>`,
+  target:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/></svg>`,
+  gear:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+  sun:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><line x1="12" y1="1.5" x2="12" y2="3.5"/><line x1="12" y1="20.5" x2="12" y2="22.5"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1.5" y1="12" x2="3.5" y2="12"/><line x1="20.5" y1="12" x2="22.5" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></svg>`,
+  moon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/></svg>`,
+  plus:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+  edit:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
+  trash:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`,
+  search:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+  close:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  alert:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+  wallet:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>`,
+  empty:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="3"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>`,
+  check:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+  logo:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="13.5" rx="3.5"/><path d="M2.5 10.5h19"/><circle cx="17" cy="15" r="1.5" fill="currentColor" stroke="none"/></svg>`,
+  spark:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l2.2 5.9 5.9 2.2-5.9 2.2L12 18.7l-2.2-5.9-5.9-2.2 5.9-2.2z"/><path d="M19 17l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>`
 };
-function icon(name, cls=''){ return `<span class="inline-flex shrink-0 ${cls}">${ICONS[name]||''}</span>`; }
+const ic=(n,s=18)=>`<span style="display:inline-flex;width:${s}px;height:${s}px">${I[n]||''}</span>`;
 
-/* ============================= UI PRIMITIVES ============================= */
-function navItem(id, label, iconName){
-  const active = state.view===id;
-  return `<button data-nav="${id}" class="w-full group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-150
-    ${active ? 'bg-accent/10 text-accent dark:bg-accent/20 dark:text-accent-light' : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-100'}">
-    ${icon(iconName,'w-[18px] h-[18px]')}<span>${label}</span>
-  </button>`;
-}
-
-function card(inner, extra=''){
-  return `<div class="rounded-md border border-zinc-200 dark:border-zinc-700/70 bg-white/80 dark:bg-surface/80 glass shadow-sm ${extra}">${inner}</div>`;
-}
-
-function statCard(label, value, sub, iconName, tint){
-  return card(`
-    <div class="p-5">
-      <div class="flex items-start justify-between">
-        <p class="text-xs font-medium text-zinc-500 dark:text-zinc-400">${label}</p>
-        <span class="w-8 h-8 rounded-md flex items-center justify-center ${tint}">${icon(iconName,'w-4 h-4')}</span>
-      </div>
-      <p class="mt-3 text-2xl font-semibold tracking-tight num-tabular">${value}</p>
-      ${sub ? `<p class="mt-1 text-xs text-zinc-400 dark:text-zinc-500">${sub}</p>` : ''}
-    </div>
-  `);
-}
-
-function emptyState(msg, sub){
-  return `<div class="flex flex-col items-center justify-center text-center py-14 px-6 text-zinc-400 dark:text-zinc-500">
-    ${icon('empty','w-9 h-9 mb-3 opacity-60')}
-    <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">${msg}</p>
-    ${sub ? `<p class="text-xs mt-1 max-w-xs">${sub}</p>` : ''}
-  </div>`;
-}
-
-function pill(text, colorClass){
-  return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${colorClass}">${text}</span>`;
-}
-
-function catDot(cat){ return `<span class="w-2 h-2 rounded-full inline-block" style="background:${CAT_COLORS[cat]||'#71717a'}"></span>`; }
-
-function selectField(id, options, selected, extraCls=''){
-  return `<select id="${id}" class="w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/60 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition ${extraCls}">
-    ${options.map(o=>`<option value="${o.value}" ${o.value===selected?'selected':''}>${o.label}</option>`).join('')}
-  </select>`;
-}
-
-/* ============================= CHARTS (SVG) ============================= */
-function donutChart(data, size=180){
-  const total = data.reduce((s,[,v])=>s+v,0);
-  if(total<=0) return emptyState('No spending yet', 'Add an expense to see your breakdown.');
-  const r = size/2 - 14, cx=size/2, cy=size/2, circ = 2*Math.PI*r;
-  let offset = 0;
-  const segs = data.map(([cat,val])=>{
-    const frac = val/total;
-    const len = frac*circ;
-    const seg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${CAT_COLORS[cat]}" stroke-width="14"
-      stroke-dasharray="${len} ${circ-len}" stroke-dashoffset="${-offset}" stroke-linecap="butt" transform="rotate(-90 ${cx} ${cy})"/>`;
-    offset += len;
-    return seg;
+/* ============================= CHARTS ============================= */
+function donut(data,size){
+  const total=data.reduce((s,[,v])=>s+v,0);
+  if(total<=0) return empty('Nothing tracked yet','Add an expense and your breakdown blooms here.');
+  const r=size/2-15, cx=size/2, cy=size/2, circ=2*Math.PI*r;
+  let off=0;
+  const segs=data.map(([cat,val])=>{
+    const len=(val/total)*circ;
+    const s=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${CAT_COLORS[cat]}" stroke-width="15"
+      stroke-dasharray="${Math.max(len-2,0)} ${circ-Math.max(len-2,0)}" stroke-dashoffset="${-off}" stroke-linecap="round"
+      transform="rotate(-90 ${cx} ${cy})"/>`;
+    off+=len; return s;
   }).join('');
   return `
-  <div class="flex flex-col sm:flex-row items-center gap-6">
-    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="shrink-0">
-      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="currentColor" class="text-zinc-100 dark:text-zinc-700/50" stroke-width="14"/>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:20px">
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink:0">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--line)" stroke-width="15"/>
       ${segs}
-      <text x="${cx}" y="${cy-2}" text-anchor="middle" class="fill-zinc-900 dark:fill-zinc-100" style="font-size:15px;font-weight:600">${fmtMoney(total)}</text>
-      <text x="${cx}" y="${cy+16}" text-anchor="middle" class="fill-zinc-400" style="font-size:10px">total spent</text>
+      <text x="${cx}" y="${cy-1}" text-anchor="middle" fill="var(--ink)" style="font-family:'Bricolage Grotesque',sans-serif;font-size:19px;font-weight:800;letter-spacing:-.03em">${fmtShort(total)}</text>
+      <text x="${cx}" y="${cy+17}" text-anchor="middle" fill="var(--ink-3)" style="font-size:10.5px;font-weight:600">total spent</text>
     </svg>
-    <div class="flex-1 w-full space-y-2">
+    <div style="width:100%">
       ${data.map(([cat,val])=>`
-        <div class="flex items-center justify-between text-sm">
-          <div class="flex items-center gap-2 text-zinc-600 dark:text-zinc-300">${catDot(cat)}<span>${cat}</span></div>
-          <div class="flex items-center gap-2">
-            <span class="num-tabular text-zinc-500 dark:text-zinc-400 text-xs">${((val/total)*100).toFixed(0)}%</span>
-            <span class="num-tabular font-medium">${fmtMoney(val)}</span>
-          </div>
+        <div class="legend-row">
+          <span style="display:flex;align-items:center;gap:9px;min-width:0"><span class="dot" style="background:${CAT_COLORS[cat]}"></span><span style="color:var(--ink-2);font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cat}</span></span>
+          <span style="display:flex;align-items:center;gap:9px;flex-shrink:0">
+            <span class="pct">${((val/total)*100).toFixed(0)}%</span>
+            <span class="tnum" style="font-weight:700">${fmtMoney(val)}</span>
+          </span>
         </div>`).join('')}
     </div>
   </div>`;
 }
 
-function barChart(buckets, height=160){
-  const max = Math.max(1, ...buckets.map(b=>b.value));
-  const w = Math.max(320, buckets.length*36);
-  const barW = Math.min(28, (w/buckets.length)-8);
-  const bars = buckets.map((b,i)=>{
-    const h = (b.value/max)*(height-30);
-    const x = i*(w/buckets.length) + ((w/buckets.length)-barW)/2;
-    const y = height-24-h;
+function bars(buckets){
+  if(!buckets.length) return empty('No activity','Nothing to plot for this range yet.');
+  const H=170, max=Math.max(1,...buckets.map(b=>b.value));
+  const step=Math.max(26, Math.min(48, 640/buckets.length));
+  const W=Math.max(buckets.length*step, 280);
+  const bw=Math.min(20, step-9);
+  const g=buckets.map((b,i)=>{
+    const h=b.value>0?Math.max((b.value/max)*(H-40),4):2;
+    const x=i*step+(step-bw)/2, y=H-24-h;
     return `<g>
-      <rect x="${x}" y="${y}" width="${barW}" height="${Math.max(h,b.value>0?2:0)}" rx="4" class="fill-accent/70 dark:fill-accent-light/70"><title>${b.label}: ${fmtMoney(b.value)}</title></rect>
-      <text x="${x+barW/2}" y="${height-8}" text-anchor="middle" class="fill-zinc-400" style="font-size:9px">${b.label.split(' ')[0]}</text>
+      <rect x="${x}" y="${y}" width="${bw}" height="${h}" rx="${Math.min(bw/2,6)}" fill="${b.value>0?'url(#bg1)':'var(--line)'}"><title>${b.full}: ${fmtMoney(b.value)}</title></rect>
+      ${buckets.length<=16||i%Math.ceil(buckets.length/12)===0?`<text x="${x+bw/2}" y="${H-7}" text-anchor="middle" fill="var(--ink-3)" style="font-size:9.5px;font-weight:600">${b.label}</text>`:''}
     </g>`;
   }).join('');
-  return `<div class="overflow-x-auto"><svg width="${w}" height="${height}" viewBox="0 0 ${w} ${height}" class="min-w-full">${bars}</svg></div>`;
+  return `<div class="scroll-x"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="min-width:100%">
+    <defs><linearGradient id="bg1" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#6d3df5"/><stop offset="55%" stop-color="#9b5cff"/><stop offset="100%" stop-color="#ff4d6d"/>
+    </linearGradient></defs>${g}</svg></div>`;
+}
+
+/* ============================= BLOCKS ============================= */
+function empty(t,s){
+  return `<div class="empty"><span class="empty-ico">${I.empty}</span><p class="empty-t">${t}</p>${s?`<p class="empty-s">${s}</p>`:''}</div>`;
+}
+function sel(id,opts,v,style=''){
+  return `<select id="${id}" class="field" style="${style}">${opts.map(o=>`<option value="${o.value}"${o.value===v?' selected':''}>${o.label}</option>`).join('')}</select>`;
+}
+function stat(lbl,val,sub,iconName,grad,tint){
+  return `<div class="stat">
+    <span class="stat-bar" style="background:${grad}"></span>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+      <p class="stat-lbl">${lbl}</p>
+      <span class="chip-ico" style="background:${tint};color:#fff">${I[iconName]}</span>
+    </div>
+    <p class="stat-val tnum">${val}</p>
+    ${sub?`<p class="stat-sub">${sub}</p>`:''}
+  </div>`;
 }
 
 /* ============================= VIEWS ============================= */
-function renderDashboard(){
-  const range = periodRange(state.dashPeriod);
-  const exp = expensesIn(range), inc = incomeIn(range);
-  const spent = totalOf(exp), income = totalOf(inc);
-  const allTimeIncome = totalOf(state.income), allTimeSpent = totalOf(state.expenses);
-  const remaining = allTimeIncome - allTimeSpent;
-  const activeBudgets = state.budgets.map(b=>({b, prog: budgetProgress(b)}));
-  const alerts = activeBudgets.filter(x=>x.prog.status!=='ok');
-  const recent = [...state.expenses].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,5);
+function viewDashboard(){
+  const range=periodRange(state.dashPeriod);
+  const exp=expensesIn(range), inc=incomeIn(range);
+  const spent=totalOf(exp), income=totalOf(inc);
+  const remaining=totalOf(state.income)-totalOf(state.expenses);
+  const progs=state.budgets.map(b=>({b,prog:budgetProgress(b)}));
+  const alerts=progs.filter(x=>x.prog.status!=='ok');
+  const recent=[...state.expenses].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,5);
+  const hour=new Date().getHours();
+  const greet=hour<12?'Good morning':hour<17?'Good afternoon':'Good evening';
+  const label={today:'today',week:'this week',month:'this month',all:'all time'}[state.dashPeriod];
 
-  return `
-  <div class="space-y-6 fade-in">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h1 class="text-xl font-semibold tracking-tight">Dashboard</h1>
-        <p class="text-sm text-zinc-500 dark:text-zinc-400">Your money, at a glance.</p>
-      </div>
-      ${selectField('dash-period',[
-        {value:'today',label:'Today'},{value:'week',label:'This week'},{value:'month',label:'This month'},{value:'all',label:'All time'}
-      ], state.dashPeriod, 'w-40')}
-    </div>
+  return `<div class="rise" style="display:flex;flex-direction:column;gap:16px">
 
-    ${alerts.length ? `<div class="space-y-2">${alerts.map(({b,prog})=>`
-      <div class="rounded-md border ${prog.status==='over'?'border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300':'border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300'} px-4 py-3 flex items-center gap-3 text-sm">
-        ${icon('alert','w-4 h-4 shrink-0')}
-        <span>${prog.status==='over' ? `You've exceeded "${b.label}" — ${fmtMoney(prog.spent)} of ${fmtMoney(b.amount)}.` : `You're at ${prog.pct.toFixed(0)}% of "${b.label}" — ${fmtMoney(prog.spent)} of ${fmtMoney(b.amount)}.`}</span>
-      </div>`).join('')}</div>` : ''}
-
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      ${statCard('Total Spent', fmtMoney(spent), state.dashPeriod==='all'?'all time':'selected period', 'wallet', 'bg-red-50 text-red-500 dark:bg-red-950/40 dark:text-red-400')}
-      ${statCard('Income', fmtMoney(income), state.dashPeriod==='all'?'all time':'selected period', 'trend', 'bg-emerald-50 text-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-400')}
-      ${statCard('Remaining Balance', fmtMoney(remaining), 'all-time income − spend', 'target', remaining<0?'bg-red-50 text-red-500 dark:bg-red-950/40 dark:text-red-400':'bg-accent/10 text-accent dark:bg-accent/20 dark:text-accent-light')}
-      ${statCard('Active Budgets', state.budgets.length, state.budgets.length? `${alerts.length} need attention` : 'none set', 'gear', 'bg-violet-50 text-violet-500 dark:bg-violet-950/40 dark:text-violet-400')}
-    </div>
-
-    <div class="grid lg:grid-cols-5 gap-4">
-      <div class="lg:col-span-2">
-        ${card(`<div class="p-5"><h3 class="text-sm font-medium mb-4">Spending by category</h3>${donutChart(categoryBreakdown(exp))}</div>`)}
-      </div>
-      <div class="lg:col-span-3">
-        ${card(`<div class="p-5"><h3 class="text-sm font-medium mb-4">Spending over time</h3>${barChart(spendOverTime(range))}</div>`)}
-      </div>
-    </div>
-
-    ${card(`
-      <div class="p-5">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-sm font-medium">Recent expenses</h3>
-          <button data-nav="expenses" class="text-xs font-medium text-accent hover:underline">View all</button>
+    <div class="hero">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <p style="font-size:12.5px;font-weight:600;opacity:.82;display:flex;align-items:center;gap:6px">${ic('spark',14)} ${greet}</p>
+          <p style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(30px,8vw,44px);letter-spacing:-.045em;line-height:1.05;margin-top:8px" class="tnum">${fmtMoney(remaining)}</p>
+          <p style="font-size:13px;opacity:.85;margin-top:5px;font-weight:550">left in your wallet</p>
         </div>
-        ${recent.length ? `<div class="divide-y divide-zinc-100 dark:divide-zinc-700/50">${recent.map(e=>expenseRow(e,true)).join('')}</div>` : emptyState('No expenses yet','Add your first expense to get started.')}
-      </div>
-    `)}
-  </div>`;
-}
-
-function expenseRow(e, compact=false){
-  return `<div class="flex items-center justify-between py-2.5 ${compact?'':'px-1'} group">
-    <div class="flex items-center gap-3 min-w-0">
-      <span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background:${CAT_COLORS[e.category]}1a; color:${CAT_COLORS[e.category]}">${catDot(e.category)}</span>
-      <div class="min-w-0">
-        <p class="text-sm font-medium truncate">${escapeHtml(e.description)}</p>
-        <p class="text-xs text-zinc-400 dark:text-zinc-500">${e.category} · ${fmtDate(e.date)}</p>
-      </div>
-    </div>
-    <div class="flex items-center gap-3 shrink-0">
-      <span class="num-tabular text-sm font-semibold">${fmtMoney(e.amount)}</span>
-      ${!compact ? `
-      <div class="hidden group-hover:flex items-center gap-1">
-        <button data-edit-expense="${e.id}" class="p-1.5 rounded-md text-zinc-400 hover:text-accent hover:bg-accent/10 transition">${icon('edit','w-3.5 h-3.5')}</button>
-        <button data-del-expense="${e.id}" class="p-1.5 rounded-md text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition">${icon('trash','w-3.5 h-3.5')}</button>
-      </div>` : ''}
-    </div>
-  </div>`;
-}
-
-function escapeHtml(s){ const d=document.createElement('div'); d.innerText = s==null?'':s; return d.innerHTML; }
-
-function renderExpenses(){
-  const f = state.histFilters;
-  const range = periodRange(f.period, {start:f.start,end:f.end});
-  let list = expensesIn(range);
-  if(f.category!=='all') list = list.filter(e=>e.category===f.category);
-  if(f.search.trim()) list = list.filter(e=>e.description.toLowerCase().includes(f.search.trim().toLowerCase()) || (e.notes||'').toLowerCase().includes(f.search.trim().toLowerCase()));
-  list = [...list].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
-  const total = totalOf(list);
-
-  return `
-  <div class="space-y-5 fade-in">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h1 class="text-xl font-semibold tracking-tight">Expenses</h1>
-        <p class="text-sm text-zinc-500 dark:text-zinc-400">${list.length} expense${list.length!==1?'s':''} · ${fmtMoney(total)} total</p>
-      </div>
-      <button data-open-modal="add-expense" class="inline-flex items-center gap-1.5 bg-accent hover:bg-accent-dark text-white text-sm font-medium px-4 py-2 rounded-md transition shadow-sm">
-        ${icon('plus','w-4 h-4')}Add Expense
-      </button>
-    </div>
-
-    ${card(`
-      <div class="p-4 flex flex-wrap gap-3 items-center">
-        <div class="relative flex-1 min-w-[180px]">
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">${icon('search','w-4 h-4')}</span>
-          <input id="hist-search" value="${escapeHtml(f.search)}" placeholder="Search expenses..." class="w-full pl-9 pr-3 py-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/60 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition"/>
+        <div style="display:flex;gap:18px;flex-wrap:wrap">
+          <div><p style="font-size:11px;opacity:.8;font-weight:600">IN · ${label}</p><p class="tnum" style="font-size:19px;font-weight:750;margin-top:3px">${fmtMoney(income)}</p></div>
+          <div><p style="font-size:11px;opacity:.8;font-weight:600">OUT · ${label}</p><p class="tnum" style="font-size:19px;font-weight:750;margin-top:3px">${fmtMoney(spent)}</p></div>
         </div>
-        ${selectField('hist-category',[{value:'all',label:'All categories'},...CATEGORIES.map(c=>({value:c,label:c}))], f.category, 'w-44')}
-        ${selectField('hist-period',[
-          {value:'today',label:'Today'},{value:'week',label:'This week'},{value:'month',label:'This month'},{value:'custom',label:'Custom range'},{value:'all',label:'All time'}
-        ], f.period, 'w-40')}
-        ${f.period==='custom' ? `
-          <input type="date" id="hist-start" value="${f.start}" class="rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/60 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"/>
-          <input type="date" id="hist-end" value="${f.end}" class="rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/60 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"/>
-        ` : ''}
       </div>
-    `)}
+    </div>
 
-    ${card(`<div class="p-5">${list.length ? `<div class="divide-y divide-zinc-100 dark:divide-zinc-700/50">${list.map(e=>expenseRow(e)).join('')}</div>` : emptyState('No matching expenses', 'Try adjusting your filters or add a new expense.')}</div>`)}
+    <div class="row-between">
+      <div><h1 class="h-title">Dashboard</h1><p class="h-sub">Your money, at a glance.</p></div>
+      ${sel('dash-period',[{value:'today',label:'Today'},{value:'week',label:'This week'},{value:'month',label:'This month'},{value:'all',label:'All time'}],state.dashPeriod,'width:auto;min-width:140px')}
+    </div>
+
+    ${alerts.length?`<div style="display:flex;flex-direction:column;gap:9px">${alerts.map(({b,prog})=>`
+      <div class="alert ${prog.status}">${I.alert}<span>${prog.status==='over'
+        ? `You've blown past <b>${esc(b.label)}</b> — ${fmtMoney(prog.spent)} of ${fmtMoney(b.amount)}.`
+        : `${prog.pct.toFixed(0)}% of <b>${esc(b.label)}</b> used — ${fmtMoney(prog.spent)} of ${fmtMoney(b.amount)}.`}</span></div>`).join('')}</div>`:''}
+
+    <div class="stat-grid">
+      ${stat('Spent',fmtShort(spent),label,'wallet','linear-gradient(90deg,#ff4d6d,#ff9f1c)','linear-gradient(135deg,#ff4d6d,#ff7a5c)')}
+      ${stat('Income',fmtShort(income),label,'trend','linear-gradient(90deg,#00c2a8,#2e9bff)','linear-gradient(135deg,#00c2a8,#12b8ff)')}
+      ${stat('Balance',fmtShort(remaining),'all-time net','target','linear-gradient(90deg,#6d3df5,#c56cff)','linear-gradient(135deg,#6d3df5,#c56cff)')}
+      ${stat('Budgets',String(state.budgets.length),state.budgets.length?`${alerts.length} need attention`:'none set','gear','linear-gradient(90deg,#ff9f1c,#ffd93d)','linear-gradient(135deg,#ff9f1c,#ffcb47)')}
+    </div>
+
+    <div class="split">
+      <div class="card pad"><h3 class="sec-title" style="margin-bottom:16px">Where it goes</h3>${donut(categoryBreakdown(exp),190)}</div>
+      <div class="card pad"><h3 class="sec-title" style="margin-bottom:16px">Spending rhythm</h3>${bars(spendOverTime(range))}</div>
+    </div>
+
+    <div class="card pad">
+      <div class="row-between" style="margin-bottom:6px">
+        <h3 class="sec-title">Recent expenses</h3>
+        <button data-nav="expenses" style="border:0;background:transparent;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--grape)">View all →</button>
+      </div>
+      ${recent.length?`<div class="list">${recent.map(e=>expRow(e,true)).join('')}</div>`:empty('No expenses yet','Tap Add Expense to start tracking.')}
+    </div>
   </div>`;
 }
 
-function renderIncome(){
-  const list = [...state.income].sort((a,b)=>b.date.localeCompare(a.date));
-  const total = totalOf(list);
-  return `
-  <div class="space-y-5 fade-in">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h1 class="text-xl font-semibold tracking-tight">Income</h1>
-        <p class="text-sm text-zinc-500 dark:text-zinc-400">${fmtMoney(total)} received all-time</p>
+function expRow(e,compact){
+  const c=CAT_COLORS[e.category]||'#8b81a3';
+  return `<div class="item">
+    <div class="item-l">
+      <span class="avatar" style="background:linear-gradient(140deg,${c}2e,${c}14);border:1px solid ${c}33">${CAT_EMOJI[e.category]||'✨'}</span>
+      <div style="min-width:0">
+        <p class="item-name">${esc(e.description)}</p>
+        <p class="item-meta">${e.category} · ${fmtDate(e.date)}</p>
       </div>
-      <button data-open-modal="add-income" class="inline-flex items-center gap-1.5 bg-accent hover:bg-accent-dark text-white text-sm font-medium px-4 py-2 rounded-md transition shadow-sm">
-        ${icon('plus','w-4 h-4')}Add Income
-      </button>
     </div>
-    ${card(`<div class="p-5">${list.length ? `<div class="divide-y divide-zinc-100 dark:divide-zinc-700/50">${list.map(i=>`
-      <div class="flex items-center justify-between py-2.5 group">
-        <div class="flex items-center gap-3 min-w-0">
-          <span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0 bg-emerald-50 text-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-400">${icon('trend','w-4 h-4')}</span>
-          <div class="min-w-0">
-            <p class="text-sm font-medium truncate">${i.source}</p>
-            <p class="text-xs text-zinc-400 dark:text-zinc-500">${fmtDate(i.date)}${i.note?' · '+escapeHtml(i.note):''}</p>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <span class="item-amt tnum">−${fmtMoney(e.amount)}</span>
+      ${!compact?`<div class="acts">
+        <button class="mini-btn" data-edit-expense="${e.id}">${I.edit}</button>
+        <button class="mini-btn danger" data-del-expense="${e.id}">${I.trash}</button>
+      </div>`:''}
+    </div>
+  </div>`;
+}
+
+function viewExpenses(){
+  const f=state.histFilters;
+  const range=periodRange(f.period,{start:f.start,end:f.end});
+  let list=expensesIn(range);
+  if(f.category!=='all') list=list.filter(e=>e.category===f.category);
+  const q=f.search.trim().toLowerCase();
+  if(q) list=list.filter(e=>e.description.toLowerCase().includes(q)||(e.notes||'').toLowerCase().includes(q));
+  list=[...list].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+
+  return `<div class="rise" style="display:flex;flex-direction:column;gap:14px">
+    <div class="row-between">
+      <div><h1 class="h-title">Expenses</h1><p class="h-sub">${list.length} entr${list.length!==1?'ies':'y'} · <b>${fmtMoney(totalOf(list))}</b></p></div>
+      <button class="btn btn-grad" data-open-modal="add-expense">${I.plus}Add Expense</button>
+    </div>
+    <div class="card" style="padding:14px">
+      <div class="filters">
+        <div class="search-wrap">${I.search}<input id="hist-search" class="field" value="${esc(f.search)}" placeholder="Search expenses…"/></div>
+        ${sel('hist-category',[{value:'all',label:'All categories'},...CATEGORIES.map(c=>({value:c,label:c}))],f.category)}
+        ${sel('hist-period',[{value:'today',label:'Today'},{value:'week',label:'This week'},{value:'month',label:'This month'},{value:'custom',label:'Custom range'},{value:'all',label:'All time'}],f.period)}
+        ${f.period==='custom'?`
+          <input type="date" id="hist-start" class="field" value="${f.start}"/>
+          <input type="date" id="hist-end" class="field" value="${f.end}"/>`:''}
+      </div>
+    </div>
+    <div class="card pad">${list.length?`<div class="list">${list.map(e=>expRow(e,false)).join('')}</div>`:empty('Nothing matches','Try loosening the filters, or add something new.')}</div>
+  </div>`;
+}
+
+function viewIncome(){
+  const list=[...state.income].sort((a,b)=>b.date.localeCompare(a.date));
+  return `<div class="rise" style="display:flex;flex-direction:column;gap:14px">
+    <div class="row-between">
+      <div><h1 class="h-title">Income</h1><p class="h-sub"><b>${fmtMoney(totalOf(list))}</b> received all-time</p></div>
+      <button class="btn btn-grad" data-open-modal="add-income">${I.plus}Add Income</button>
+    </div>
+    <div class="card pad">${list.length?`<div class="list">${list.map(i=>`
+      <div class="item">
+        <div class="item-l">
+          <span class="avatar" style="background:linear-gradient(140deg,#00c2a833,#2e9bff1a);border:1px solid #00c2a840;color:#00a58f">${I.trend.replace('<svg','<svg width="17" height="17"')}</span>
+          <div style="min-width:0">
+            <p class="item-name">${esc(i.source)}</p>
+            <p class="item-meta">${fmtDate(i.date)}${i.note?' · '+esc(i.note):''}</p>
           </div>
         </div>
-        <div class="flex items-center gap-3 shrink-0">
-          <span class="num-tabular text-sm font-semibold text-emerald-600 dark:text-emerald-400">+${fmtMoney(i.amount)}</span>
-          <div class="hidden group-hover:flex items-center gap-1">
-            <button data-edit-income="${i.id}" class="p-1.5 rounded-md text-zinc-400 hover:text-accent hover:bg-accent/10 transition">${icon('edit','w-3.5 h-3.5')}</button>
-            <button data-del-income="${i.id}" class="p-1.5 rounded-md text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition">${icon('trash','w-3.5 h-3.5')}</button>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span class="item-amt tnum" style="color:#00a58f">+${fmtMoney(i.amount)}</span>
+          <div class="acts">
+            <button class="mini-btn" data-edit-income="${i.id}">${I.edit}</button>
+            <button class="mini-btn danger" data-del-income="${i.id}">${I.trash}</button>
           </div>
         </div>
-      </div>`).join('')}</div>` : emptyState('No income recorded', 'Add your pocket money, salary or scholarship.')}</div>`)}
+      </div>`).join('')}</div>`:empty('No income yet','Pocket money, salary, scholarship — log it here.')}</div>
   </div>`;
 }
 
-function renderBudgets(){
-  const list = state.budgets;
-  return `
-  <div class="space-y-5 fade-in">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h1 class="text-xl font-semibold tracking-tight">Budgets</h1>
-        <p class="text-sm text-zinc-500 dark:text-zinc-400">Set limits and track your progress.</p>
-      </div>
-      <button data-open-modal="add-budget" class="inline-flex items-center gap-1.5 bg-accent hover:bg-accent-dark text-white text-sm font-medium px-4 py-2 rounded-md transition shadow-sm">
-        ${icon('plus','w-4 h-4')}Add Budget
-      </button>
+function viewBudgets(){
+  return `<div class="rise" style="display:flex;flex-direction:column;gap:14px">
+    <div class="row-between">
+      <div><h1 class="h-title">Budgets</h1><p class="h-sub">Set a ceiling, watch the gauge.</p></div>
+      <button class="btn btn-grad" data-open-modal="add-budget">${I.plus}Add Budget</button>
     </div>
-    ${list.length ? `<div class="grid sm:grid-cols-2 gap-4">${list.map(b=>budgetCard(b)).join('')}</div>` : card(emptyState('No budgets yet','Create a weekly or monthly limit to stay on track.'))}
+    ${state.budgets.length
+      ? `<div style="display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr))">${state.budgets.map(budgetCard).join('')}</div>`
+      : `<div class="card">${empty('No budgets yet','Create a weekly or monthly limit to stay on track.')}</div>`}
   </div>`;
 }
 
 function budgetCard(b){
-  const prog = budgetProgress(b);
-  const barColor = prog.status==='over' ? 'bg-red-500' : prog.status==='warn' ? 'bg-amber-500' : 'bg-accent';
-  const widthPct = Math.min(100, prog.pct);
-  return card(`
-    <div class="p-5">
-      <div class="flex items-start justify-between mb-1">
-        <div>
-          <p class="text-sm font-semibold">${escapeHtml(b.label)}</p>
-          <p class="text-xs text-zinc-400 dark:text-zinc-500 capitalize">${b.period} · ${b.category==='all'?'All categories':b.category}</p>
+  const p=budgetProgress(b);
+  const fill = p.status==='over' ? 'linear-gradient(90deg,#ff4d6d,#f43f5e)'
+             : p.status==='warn' ? 'linear-gradient(90deg,#ff9f1c,#ffd93d)'
+             : 'linear-gradient(90deg,#6d3df5,#c56cff,#2e9bff)';
+  const tone = p.status==='over'?'#e11d48':p.status==='warn'?'#d97706':'var(--ink-3)';
+  return `<div class="bcard">
+    <span style="display:block;height:5px;background:${fill}"></span>
+    <div class="pad">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div style="min-width:0">
+          <p style="font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.label)}</p>
+          <p style="font-size:11.5px;color:var(--ink-3);margin-top:3px;text-transform:capitalize">${b.period} · ${b.category==='all'?'All categories':b.category}</p>
         </div>
-        <div class="flex items-center gap-1">
-          <button data-edit-budget="${b.id}" class="p-1.5 rounded-md text-zinc-400 hover:text-accent hover:bg-accent/10 transition">${icon('edit','w-3.5 h-3.5')}</button>
-          <button data-del-budget="${b.id}" class="p-1.5 rounded-md text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition">${icon('trash','w-3.5 h-3.5')}</button>
+        <div style="display:flex;gap:2px;flex-shrink:0">
+          <button class="mini-btn" data-edit-budget="${b.id}">${I.edit}</button>
+          <button class="mini-btn danger" data-del-budget="${b.id}">${I.trash}</button>
         </div>
       </div>
-      <div class="mt-4">
-        <div class="flex items-baseline justify-between mb-1.5">
-          <span class="text-lg font-semibold num-tabular">${fmtMoney(prog.spent)}</span>
-          <span class="text-xs text-zinc-400 num-tabular">of ${fmtMoney(b.amount)}</span>
+      <div style="margin-top:18px">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:9px">
+          <span class="tnum" style="font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:800;letter-spacing:-.035em">${fmtMoney(p.spent)}</span>
+          <span class="tnum" style="font-size:12px;color:var(--ink-3);font-weight:600">of ${fmtMoney(b.amount)}</span>
         </div>
-        <div class="h-2 rounded-md bg-zinc-100 dark:bg-zinc-700/60 overflow-hidden">
-          <div class="h-full ${barColor} rounded-md transition-all duration-300" style="width:${widthPct}%"></div>
-        </div>
-        <p class="mt-2 text-xs ${prog.status==='over'?'text-red-500':prog.status==='warn'?'text-amber-500':'text-zinc-400 dark:text-zinc-500'}">
-          ${prog.status==='over' ? `Exceeded by ${fmtMoney(prog.spent-b.amount)}` : prog.status==='warn' ? `${prog.pct.toFixed(0)}% used — approaching limit` : `${fmtMoney(Math.max(0,b.amount-prog.spent))} remaining`}
+        <div class="track"><div style="width:${Math.min(100,p.pct)}%;background:${fill}"></div></div>
+        <p style="margin-top:10px;font-size:12px;font-weight:600;color:${tone}">
+          ${p.status==='over'?`Over by ${fmtMoney(p.spent-b.amount)}`:p.status==='warn'?`${p.pct.toFixed(0)}% used — easy now`:`${fmtMoney(Math.max(0,b.amount-p.spent))} still yours`}
         </p>
       </div>
     </div>
-  `);
-}
-
-function renderSettings(){
-  return `
-  <div class="space-y-5 fade-in max-w-xl">
-    <div>
-      <h1 class="text-xl font-semibold tracking-tight">Settings</h1>
-      <p class="text-sm text-zinc-500 dark:text-zinc-400">Preferences for your tracker.</p>
-    </div>
-    ${card(`
-      <div class="p-5 flex items-center justify-between">
-        <div>
-          <p class="text-sm font-medium">Appearance</p>
-          <p class="text-xs text-zinc-400 dark:text-zinc-500">Switch between light and dark theme.</p>
-        </div>
-        <button id="theme-toggle-settings" class="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-zinc-200 dark:border-zinc-700 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-white/5 transition">
-          ${icon(state.theme==='dark'?'moon':'sun','w-4 h-4')}<span>${state.theme==='dark'?'Dark':'Light'}</span>
-        </button>
-      </div>
-    `)}
-    ${card(`
-      <div class="p-5">
-        <p class="text-sm font-medium mb-1">Data</p>
-        <p class="text-xs text-zinc-400 dark:text-zinc-500 mb-3">${state.expenses.length} expenses · ${state.income.length} income entries · ${state.budgets.length} budgets. Stored only in this browser.</p>
-        <button id="clear-data" class="text-sm font-medium text-red-500 hover:text-red-600 transition">Clear all data</button>
-      </div>
-    `)}
   </div>`;
 }
 
-/* ============================= MODALS ============================= */
-function modalShell(title, bodyHtml, footerHtml){
-  return `
-  <div id="modal-backdrop" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4 fade-in">
-    <div class="w-full sm:max-w-md bg-white dark:bg-surface rounded-t-md sm:rounded-md border border-zinc-200 dark:border-zinc-700 shadow-xl max-h-[90vh] flex flex-col">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-zinc-100 dark:border-zinc-700/60">
-        <h3 class="text-sm font-semibold">${title}</h3>
-        <button id="modal-close" class="p-1 rounded-md text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/5 transition">${icon('close','w-4 h-4')}</button>
+function viewSettings(){
+  return `<div class="rise" style="display:flex;flex-direction:column;gap:14px;max-width:620px">
+    <div><h1 class="h-title">Settings</h1><p class="h-sub">Preferences for your tracker.</p></div>
+    <div class="card pad">
+      <div class="row-between">
+        <div><p style="font-weight:650;font-size:14.5px">Appearance</p><p style="font-size:12.5px;color:var(--ink-3);margin-top:3px">Switch between light and dark.</p></div>
+        <button id="theme-toggle-settings" class="btn btn-soft">${ic(state.theme==='dark'?'moon':'sun',16)}${state.theme==='dark'?'Dark':'Light'}</button>
       </div>
-      <div class="px-5 py-4 overflow-y-auto space-y-3">${bodyHtml}</div>
-      <div class="px-5 py-4 border-t border-zinc-100 dark:border-zinc-700/60 flex justify-end gap-2">${footerHtml}</div>
+    </div>
+    <div class="card pad">
+      <p style="font-weight:650;font-size:14.5px">Your data</p>
+      <p style="font-size:12.5px;color:var(--ink-3);margin:6px 0 14px">${state.expenses.length} expenses · ${state.income.length} income entries · ${state.budgets.length} budgets. Stored only in this browser.</p>
+      <button id="clear-data" class="btn btn-soft" style="color:#e11d48">${I.trash}Clear all data</button>
     </div>
   </div>`;
 }
-function fieldLabel(t){ return `<label class="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">${t}</label>`; }
-function textInput(id, value, placeholder='', type='text', extra=''){
-  return `<input id="${id}" type="${type}" value="${value==null?'':escapeHtml(String(value))}" placeholder="${placeholder}" ${extra}
-    class="w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/60 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition"/>`;
+
+/* ============================= MODAL ============================= */
+function sheet(title,body,footer){
+  return `<div class="backdrop" id="backdrop"><div class="sheet">
+    <div class="grab"></div>
+    <div class="sheet-hd"><h3>${title}</h3><button class="icon-btn" id="modal-close" style="width:34px;height:34px">${I.close}</button></div>
+    <div class="sheet-bd">${body}</div>
+    <div class="sheet-ft">${footer}</div>
+  </div></div>`;
 }
-function btnPrimary(id, label){ return `<button id="${id}" class="px-4 py-2 rounded-md bg-accent hover:bg-accent-dark text-white text-sm font-medium transition shadow-sm">${label}</button>`; }
-function btnGhost(id, label){ return `<button id="${id}" class="px-4 py-2 rounded-md text-sm font-medium text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 transition">${label}</button>`; }
-function errBox(id){ return `<p id="${id}" class="text-xs text-red-500 hidden"></p>`; }
+function inp(id,v,ph='',type='text'){
+  return `<input id="${id}" class="field" type="${type}" value="${v==null?'':esc(String(v))}" placeholder="${ph}"${type==='number'?' inputmode="decimal" step="0.01"':''}/>`;
+}
+const lbl=t=>`<label class="f-lbl">${t}</label>`;
+const two=(a,b)=>`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">${a}${b}</div>`;
 
 function renderModal(){
-  const m = state.modal;
-  if(!m) return '';
-  if(m.type==='add-expense' || m.type==='edit-expense'){
-    const e = m.payload || { amount:'', description:'', category:CATEGORIES[0], date:todayISO(), notes:'' };
-    return modalShell(m.type==='edit-expense'?'Edit Expense':'Add Expense', `
-      <div>${fieldLabel('Amount (₹)')}${textInput('f-amount', e.amount, '0.00', 'number')}</div>
-      <div>${fieldLabel('Description')}${textInput('f-desc', e.description, 'e.g. Canteen lunch')}</div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>${fieldLabel('Category')}${selectField('f-category', CATEGORIES.map(c=>({value:c,label:c})), e.category)}</div>
-        <div>${fieldLabel('Date')}${textInput('f-date', e.date, '', 'date')}</div>
-      </div>
-      <div>${fieldLabel('Notes (optional)')}${textInput('f-notes', e.notes, 'Add a note...')}</div>
-      ${errBox('f-err')}
-    `, `${btnGhost('modal-cancel','Cancel')}${btnPrimary('f-save', m.type==='edit-expense'?'Save Changes':'Add Expense')}`);
+  const m=state.modal; if(!m) return '';
+  const cancel=`<button class="btn btn-soft" id="modal-cancel">Cancel</button>`;
+  if(m.type.endsWith('expense')&&m.type!=='confirm-delete'){
+    const e=m.payload||{amount:'',description:'',category:CATEGORIES[0],date:todayISO(),notes:''};
+    return sheet(m.type==='edit-expense'?'Edit Expense':'Add Expense',
+      `<div>${lbl('Amount (₹)')}${inp('f-amount',e.amount,'0.00','number')}</div>
+       <div>${lbl('Description')}${inp('f-desc',e.description,'e.g. Canteen lunch')}</div>
+       ${two(`<div>${lbl('Category')}${sel('f-category',CATEGORIES.map(c=>({value:c,label:c})),e.category)}</div>`,
+             `<div>${lbl('Date')}${inp('f-date',e.date,'','date')}</div>`)}
+       <div>${lbl('Notes (optional)')}${inp('f-notes',e.notes,'Add a note…')}</div>
+       <p class="err" id="f-err"></p>`,
+      `${cancel}<button class="btn btn-grad" id="f-save">${m.type==='edit-expense'?'Save':'Add Expense'}</button>`);
   }
-  if(m.type==='add-income' || m.type==='edit-income'){
-    const i = m.payload || { amount:'', source:INCOME_SOURCES[0], date:todayISO(), note:'' };
-    return modalShell(m.type==='edit-income'?'Edit Income':'Add Income', `
-      <div>${fieldLabel('Amount (₹)')}${textInput('f-amount', i.amount, '0.00', 'number')}</div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>${fieldLabel('Source')}${selectField('f-source', INCOME_SOURCES.map(s=>({value:s,label:s})), i.source)}</div>
-        <div>${fieldLabel('Date')}${textInput('f-date', i.date, '', 'date')}</div>
-      </div>
-      <div>${fieldLabel('Note (optional)')}${textInput('f-note', i.note, 'Add a note...')}</div>
-      ${errBox('f-err')}
-    `, `${btnGhost('modal-cancel','Cancel')}${btnPrimary('f-save', m.type==='edit-income'?'Save Changes':'Add Income')}`);
+  if(m.type.endsWith('income')){
+    const i=m.payload||{amount:'',source:INCOME_SOURCES[0],date:todayISO(),note:''};
+    return sheet(m.type==='edit-income'?'Edit Income':'Add Income',
+      `<div>${lbl('Amount (₹)')}${inp('f-amount',i.amount,'0.00','number')}</div>
+       ${two(`<div>${lbl('Source')}${sel('f-source',INCOME_SOURCES.map(s=>({value:s,label:s})),i.source)}</div>`,
+             `<div>${lbl('Date')}${inp('f-date',i.date,'','date')}</div>`)}
+       <div>${lbl('Note (optional)')}${inp('f-note',i.note,'Add a note…')}</div>
+       <p class="err" id="f-err"></p>`,
+      `${cancel}<button class="btn btn-grad" id="f-save">${m.type==='edit-income'?'Save':'Add Income'}</button>`);
   }
-  if(m.type==='add-budget' || m.type==='edit-budget'){
-    const b = m.payload || { label:'', amount:'', period:'monthly', category:'all' };
-    return modalShell(m.type==='edit-budget'?'Edit Budget':'Add Budget', `
-      <div>${fieldLabel('Label')}${textInput('f-label', b.label, 'e.g. Monthly spending limit')}</div>
-      <div>${fieldLabel('Amount (₹)')}${textInput('f-amount', b.amount, '0.00', 'number')}</div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>${fieldLabel('Period')}${selectField('f-period', [{value:'weekly',label:'Weekly'},{value:'monthly',label:'Monthly'}], b.period)}</div>
-        <div>${fieldLabel('Category')}${selectField('f-category', [{value:'all',label:'All categories'},...CATEGORIES.map(c=>({value:c,label:c}))], b.category)}</div>
-      </div>
-      ${errBox('f-err')}
-    `, `${btnGhost('modal-cancel','Cancel')}${btnPrimary('f-save', m.type==='edit-budget'?'Save Changes':'Add Budget')}`);
+  if(m.type.endsWith('budget')){
+    const b=m.payload||{label:'',amount:'',period:'monthly',category:'all'};
+    return sheet(m.type==='edit-budget'?'Edit Budget':'Add Budget',
+      `<div>${lbl('Label')}${inp('f-label',b.label,'e.g. Monthly limit')}</div>
+       <div>${lbl('Amount (₹)')}${inp('f-amount',b.amount,'0.00','number')}</div>
+       ${two(`<div>${lbl('Period')}${sel('f-period',[{value:'weekly',label:'Weekly'},{value:'monthly',label:'Monthly'}],b.period)}</div>`,
+             `<div>${lbl('Category')}${sel('f-category',[{value:'all',label:'All categories'},...CATEGORIES.map(c=>({value:c,label:c}))],b.category)}</div>`)}
+       <p class="err" id="f-err"></p>`,
+      `${cancel}<button class="btn btn-grad" id="f-save">${m.type==='edit-budget'?'Save':'Add Budget'}</button>`);
   }
   if(m.type==='confirm-delete'){
-    return modalShell('Delete this?', `<p class="text-sm text-zinc-500 dark:text-zinc-400">This action can't be undone. Are you sure you want to delete "${escapeHtml(m.payload.label)}"?</p>`,
-      `${btnGhost('modal-cancel','Cancel')}<button id="confirm-del" class="px-4 py-2 rounded-md bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition">Delete</button>`);
+    return sheet('Delete this?',
+      `<p style="font-size:14px;color:var(--ink-2);line-height:1.55">This can't be undone. Delete <b>${esc(m.payload.label)}</b>?</p>`,
+      `${cancel}<button class="btn btn-red" id="confirm-del">Delete</button>`);
   }
   return '';
 }
 
-/* ============================= LAYOUT ============================= */
-function renderSidebarContent(){
-  return `
-    <div class="flex items-center gap-2.5 px-3 py-4 mb-2">
-      <span class="w-8 h-8 rounded-md bg-accent text-white flex items-center justify-center">${icon('logo','w-4 h-4')}</span>
-      <span class="font-semibold tracking-tight">Wallet</span>
-    </div>
-    <nav class="flex-1 space-y-1 px-0">
-      ${navItem('dashboard','Dashboard','grid')}
-      ${navItem('expenses','Expenses','list')}
-      ${navItem('income','Income','trend')}
-      ${navItem('budgets','Budgets','target')}
-      ${navItem('settings','Settings','gear')}
-    </nav>
-    <button id="theme-toggle" class="mt-2 flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-100 transition">
-      ${icon(state.theme==='dark'?'sun':'moon','w-[18px] h-[18px]')}<span>${state.theme==='dark'?'Light mode':'Dark mode'}</span>
-    </button>
-  `;
-}
+/* ============================= SHELL ============================= */
+const NAV=[['dashboard','Dashboard','grid'],['expenses','Expenses','list'],['income','Income','trend'],['budgets','Budgets','target'],['settings','Settings','gear']];
 
-function renderApp(){
-  const html = document.documentElement;
-  html.classList.toggle('dark', state.theme==='dark');
+function render(){
+  document.documentElement.classList.toggle('dark',state.theme==='dark');
+  let v='';
+  if(state.view==='dashboard') v=viewDashboard();
+  else if(state.view==='expenses') v=viewExpenses();
+  else if(state.view==='income') v=viewIncome();
+  else if(state.view==='budgets') v=viewBudgets();
+  else v=viewSettings();
 
-  let viewHtml = '';
-  if(state.view==='dashboard') viewHtml = renderDashboard();
-  else if(state.view==='expenses') viewHtml = renderExpenses();
-  else if(state.view==='income') viewHtml = renderIncome();
-  else if(state.view==='budgets') viewHtml = renderBudgets();
-  else if(state.view==='settings') viewHtml = renderSettings();
-
-  document.getElementById('app').innerHTML = `
-    <aside class="hidden md:flex flex-col w-60 shrink-0 border-r border-zinc-200 dark:border-zinc-700/60 bg-white/60 dark:bg-surface-dark/60 glass px-3 py-2">
-      ${renderSidebarContent()}
+  document.getElementById('app').innerHTML=`
+    <aside class="side">
+      <div class="brand"><span class="brand-mark">${I.logo}</span><span class="brand-name">Wallet</span></div>
+      <nav style="flex:1;display:flex;flex-direction:column;gap:4px">
+        ${NAV.map(([id,label,icn])=>`<button class="nav-btn${state.view===id?' on':''}" data-nav="${id}">${I[icn]}<span>${label}</span></button>`).join('')}
+      </nav>
+      <button class="nav-btn" id="theme-toggle">${I[state.theme==='dark'?'sun':'moon']}<span>${state.theme==='dark'?'Light mode':'Dark mode'}</span></button>
     </aside>
 
-    <div class="flex-1 flex flex-col min-w-0">
-      <header class="md:hidden flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700/60 bg-white/70 dark:bg-surface-dark/70 glass sticky top-0 z-30">
-        <div class="flex items-center gap-2">
-          <span class="w-7 h-7 rounded-md bg-accent text-white flex items-center justify-center">${icon('logo','w-3.5 h-3.5')}</span>
-          <span class="font-semibold text-sm">Wallet</span>
+    <div class="main">
+      <header class="topbar">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="brand-mark" style="width:33px;height:33px;border-radius:11px">${I.logo}</span>
+          <span class="brand-name" style="font-size:17px">Wallet</span>
         </div>
-        <button id="theme-toggle-mobile" class="p-2 rounded-md text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 transition">
-          ${icon(state.theme==='dark'?'sun':'moon','w-4 h-4')}
-        </button>
+        <button class="icon-btn" id="theme-toggle-mobile">${I[state.theme==='dark'?'sun':'moon']}</button>
       </header>
 
-      <main class="flex-1 px-4 sm:px-6 py-6 pb-24 md:pb-6">${viewHtml}</main>
+      <main class="content">${v}</main>
 
-      <nav class="md:hidden fixed bottom-0 left-0 right-0 z-30 flex justify-around items-center bg-white/85 dark:bg-surface-dark/85 glass border-t border-zinc-200 dark:border-zinc-700/60 py-2">
-        ${['dashboard','expenses','income','budgets','settings'].map(id=>{
-          const map = {dashboard:'grid',expenses:'list',income:'trend',budgets:'target',settings:'gear'};
-          const active = state.view===id;
-          return `<button data-nav="${id}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-md text-[10px] font-medium ${active?'text-accent':'text-zinc-400'}">
-            ${icon(map[id],'w-5 h-5')}<span class="capitalize">${id}</span>
-          </button>`;
-        }).join('')}
+      <nav class="tabbar">
+        ${NAV.map(([id,label,icn])=>`<button class="tab${state.view===id?' on':''}" data-nav="${id}"><span class="tab-ico">${I[icn]}</span><span>${label}</span></button>`).join('')}
       </nav>
     </div>
 
     ${renderModal()}
-    ${state.toast ? `<div class="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-[60] fade-in">
-      <div class="flex items-center gap-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium px-4 py-2.5 rounded-md shadow-lg">
-        ${icon('check','w-4 h-4')}${state.toast}
-      </div>
-    </div>` : ''}
+    ${state.toast?`<div class="toast">${I.check}${state.toast}</div>`:''}
   `;
-  attachEvents();
+  bind();
 }
 
 /* ============================= EVENTS ============================= */
-function showToast(msg){
-  state.toast = msg;
-  renderApp();
-  clearTimeout(window.__toastTimer);
-  window.__toastTimer = setTimeout(()=>{ state.toast=null; renderApp(); }, 2200);
+function toast(msg){
+  state.toast=msg; render();
+  clearTimeout(window.__t); window.__t=setTimeout(()=>{ state.toast=null; render(); },2100);
 }
+const closeModal=()=>{ state.modal=null; render(); };
+const openModal=(t,p=null)=>{ state.modal={type:t,payload:p}; render(); };
+function num(id){ const v=parseFloat(document.getElementById(id).value); return isNaN(v)||v<=0?null:v; }
+function fail(msg){ const e=document.getElementById('f-err'); e.textContent=msg; e.style.display='block'; }
 
-function closeModal(){ state.modal=null; renderApp(); }
-function openModal(type, payload=null){ state.modal = {type, payload}; renderApp(); }
-
-function validateNumber(id){
-  const el = document.getElementById(id);
-  const v = parseFloat(el.value);
-  return isNaN(v) || v<=0 ? null : v;
-}
-
-function saveExpenseFromModal(){
-  const amount = validateNumber('f-amount');
-  const desc = document.getElementById('f-desc').value.trim();
-  const date = document.getElementById('f-date').value;
-  const errEl = document.getElementById('f-err');
-  if(!amount || !desc || !date){
-    errEl.textContent = 'Please enter a valid amount, description and date.';
-    errEl.classList.remove('hidden');
-    return;
-  }
-  const category = document.getElementById('f-category').value;
-  const notes = document.getElementById('f-notes').value.trim();
-  const m = state.modal;
+function saveExpense(){
+  const amount=num('f-amount'), desc=document.getElementById('f-desc').value.trim(), date=document.getElementById('f-date').value;
+  if(!amount||!desc||!date) return fail('Enter a valid amount, description and date.');
+  const category=document.getElementById('f-category').value, notes=document.getElementById('f-notes').value.trim();
+  const m=state.modal;
   if(m.type==='edit-expense'){
-    const idx = state.expenses.findIndex(e=>e.id===m.payload.id);
-    state.expenses[idx] = {...m.payload, amount, description:desc, category, date, notes};
-    showToast('Expense updated');
-  } else {
-    state.expenses.push({id:uid(), amount, description:desc, category, date, notes});
-    showToast('Expense added');
-  }
-  persist(); closeModal();
+    const i=state.expenses.findIndex(e=>e.id===m.payload.id);
+    state.expenses[i]={...m.payload,amount,description:desc,category,date,notes}; persist(); closeModal(); toast('Expense updated');
+  } else { state.expenses.push({id:uid(),amount,description:desc,category,date,notes}); persist(); closeModal(); toast('Expense added'); }
 }
-
-function saveIncomeFromModal(){
-  const amount = validateNumber('f-amount');
-  const date = document.getElementById('f-date').value;
-  const errEl = document.getElementById('f-err');
-  if(!amount || !date){
-    errEl.textContent = 'Please enter a valid amount and date.';
-    errEl.classList.remove('hidden');
-    return;
-  }
-  const source = document.getElementById('f-source').value;
-  const note = document.getElementById('f-note').value.trim();
-  const m = state.modal;
+function saveIncome(){
+  const amount=num('f-amount'), date=document.getElementById('f-date').value;
+  if(!amount||!date) return fail('Enter a valid amount and date.');
+  const source=document.getElementById('f-source').value, note=document.getElementById('f-note').value.trim();
+  const m=state.modal;
   if(m.type==='edit-income'){
-    const idx = state.income.findIndex(i=>i.id===m.payload.id);
-    state.income[idx] = {...m.payload, amount, source, date, note};
-    showToast('Income updated');
-  } else {
-    state.income.push({id:uid(), amount, source, date, note});
-    showToast('Income added');
-  }
-  persist(); closeModal();
+    const i=state.income.findIndex(x=>x.id===m.payload.id);
+    state.income[i]={...m.payload,amount,source,date,note}; persist(); closeModal(); toast('Income updated');
+  } else { state.income.push({id:uid(),amount,source,date,note}); persist(); closeModal(); toast('Income added'); }
 }
-
-function saveBudgetFromModal(){
-  const amount = validateNumber('f-amount');
-  const label = document.getElementById('f-label').value.trim();
-  const errEl = document.getElementById('f-err');
-  if(!amount || !label){
-    errEl.textContent = 'Please enter a valid label and amount.';
-    errEl.classList.remove('hidden');
-    return;
-  }
-  const period = document.getElementById('f-period').value;
-  const category = document.getElementById('f-category').value;
-  const m = state.modal;
+function saveBudget(){
+  const amount=num('f-amount'), label=document.getElementById('f-label').value.trim();
+  if(!amount||!label) return fail('Enter a valid label and amount.');
+  const period=document.getElementById('f-period').value, category=document.getElementById('f-category').value;
+  const m=state.modal;
   if(m.type==='edit-budget'){
-    const idx = state.budgets.findIndex(b=>b.id===m.payload.id);
-    state.budgets[idx] = {...m.payload, amount, label, period, category};
-    showToast('Budget updated');
-  } else {
-    state.budgets.push({id:uid(), amount, label, period, category});
-    showToast('Budget created');
-  }
-  persist(); closeModal();
+    const i=state.budgets.findIndex(b=>b.id===m.payload.id);
+    state.budgets[i]={...m.payload,amount,label,period,category}; persist(); closeModal(); toast('Budget updated');
+  } else { state.budgets.push({id:uid(),amount,label,period,category}); persist(); closeModal(); toast('Budget created'); }
 }
 
-function attachEvents(){
-  const app = document.getElementById('app');
+function bind(){
+  const app=document.getElementById('app');
+  app.querySelectorAll('[data-nav]').forEach(el=>el.onclick=()=>{ state.view=el.dataset.nav; state.modal=null; render(); window.scrollTo(0,0); });
 
-  app.querySelectorAll('[data-nav]').forEach(el=>el.addEventListener('click', ()=>{
-    state.view = el.dataset.nav; state.modal=null; renderApp();
-  }));
-
-  const themeBtns = ['theme-toggle','theme-toggle-mobile','theme-toggle-settings'];
-  themeBtns.forEach(id=>{
-    const el = document.getElementById(id);
-    if(el) el.addEventListener('click', ()=>{ state.theme = state.theme==='dark'?'light':'dark'; persist(); renderApp(); });
+  ['theme-toggle','theme-toggle-mobile','theme-toggle-settings'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.onclick=()=>{ state.theme=state.theme==='dark'?'light':'dark'; persist(); render(); };
   });
 
-  const clearBtn = document.getElementById('clear-data');
-  if(clearBtn) clearBtn.addEventListener('click', ()=>{
-    openModal('confirm-delete', {label:'all your data', onConfirm:'clear-all'});
-  });
+  const cd=document.getElementById('clear-data');
+  if(cd) cd.onclick=()=>openModal('confirm-delete',{label:'all your data',onConfirm:'clear-all'});
 
-  // Dashboard period
-  const dp = document.getElementById('dash-period');
-  if(dp) dp.addEventListener('change', e=>{ state.dashPeriod = e.target.value; renderApp(); });
+  const dp=document.getElementById('dash-period');
+  if(dp) dp.onchange=e=>{ state.dashPeriod=e.target.value; render(); };
 
-  // History filters
-  const hs = document.getElementById('hist-search');
+  const hs=document.getElementById('hist-search');
   if(hs){
-    hs.addEventListener('input', e=>{ state.histFilters.search = e.target.value; renderExpensesOnly(); });
-    hs.focus(); hs.setSelectionRange(hs.value.length, hs.value.length);
+    hs.oninput=e=>{ state.histFilters.search=e.target.value; repaintExpenses(); };
+    if(document.activeElement!==hs && state.histFilters.search){ hs.focus(); hs.setSelectionRange(hs.value.length,hs.value.length); }
   }
-  const hc = document.getElementById('hist-category');
-  if(hc) hc.addEventListener('change', e=>{ state.histFilters.category = e.target.value; renderApp(); });
-  const hp = document.getElementById('hist-period');
-  if(hp) hp.addEventListener('change', e=>{ state.histFilters.period = e.target.value; renderApp(); });
-  const hstart = document.getElementById('hist-start');
-  if(hstart) hstart.addEventListener('change', e=>{ state.histFilters.start = e.target.value; renderApp(); });
-  const hend = document.getElementById('hist-end');
-  if(hend) hend.addEventListener('change', e=>{ state.histFilters.end = e.target.value; renderApp(); });
+  const map={'hist-category':'category','hist-period':'period','hist-start':'start','hist-end':'end'};
+  Object.entries(map).forEach(([id,k])=>{ const el=document.getElementById(id); if(el) el.onchange=e=>{ state.histFilters[k]=e.target.value; render(); }; });
 
-  // Open modals
-  app.querySelectorAll('[data-open-modal]').forEach(el=>el.addEventListener('click', ()=>openModal(el.dataset.openModal)));
-  app.querySelectorAll('[data-edit-expense]').forEach(el=>el.addEventListener('click', ()=>{
-    const item = state.expenses.find(e=>e.id===el.dataset.editExpense);
-    openModal('edit-expense', item);
-  }));
-  app.querySelectorAll('[data-edit-income]').forEach(el=>el.addEventListener('click', ()=>{
-    const item = state.income.find(i=>i.id===el.dataset.editIncome);
-    openModal('edit-income', item);
-  }));
-  app.querySelectorAll('[data-edit-budget]').forEach(el=>el.addEventListener('click', ()=>{
-    const item = state.budgets.find(b=>b.id===el.dataset.editBudget);
-    openModal('edit-budget', item);
-  }));
-  app.querySelectorAll('[data-del-expense]').forEach(el=>el.addEventListener('click', ()=>{
-    const item = state.expenses.find(e=>e.id===el.dataset.delExpense);
-    openModal('confirm-delete', {label:item.description, kind:'expense', id:item.id});
-  }));
-  app.querySelectorAll('[data-del-income]').forEach(el=>el.addEventListener('click', ()=>{
-    const item = state.income.find(i=>i.id===el.dataset.delIncome);
-    openModal('confirm-delete', {label:item.source, kind:'income', id:item.id});
-  }));
-  app.querySelectorAll('[data-del-budget]').forEach(el=>el.addEventListener('click', ()=>{
-    const item = state.budgets.find(b=>b.id===el.dataset.delBudget);
-    openModal('confirm-delete', {label:item.label, kind:'budget', id:item.id});
-  }));
+  app.querySelectorAll('[data-open-modal]').forEach(el=>el.onclick=()=>openModal(el.dataset.openModal));
+  app.querySelectorAll('[data-edit-expense]').forEach(el=>el.onclick=()=>openModal('edit-expense',state.expenses.find(e=>e.id===el.dataset.editExpense)));
+  app.querySelectorAll('[data-edit-income]').forEach(el=>el.onclick=()=>openModal('edit-income',state.income.find(i=>i.id===el.dataset.editIncome)));
+  app.querySelectorAll('[data-edit-budget]').forEach(el=>el.onclick=()=>openModal('edit-budget',state.budgets.find(b=>b.id===el.dataset.editBudget)));
+  app.querySelectorAll('[data-del-expense]').forEach(el=>el.onclick=()=>{ const i=state.expenses.find(e=>e.id===el.dataset.delExpense); openModal('confirm-delete',{label:i.description,kind:'expense',id:i.id}); });
+  app.querySelectorAll('[data-del-income]').forEach(el=>el.onclick=()=>{ const i=state.income.find(x=>x.id===el.dataset.delIncome); openModal('confirm-delete',{label:i.source,kind:'income',id:i.id}); });
+  app.querySelectorAll('[data-del-budget]').forEach(el=>el.onclick=()=>{ const b=state.budgets.find(x=>x.id===el.dataset.delBudget); openModal('confirm-delete',{label:b.label,kind:'budget',id:b.id}); });
 
-  // Modal internal
-  const backdrop = document.getElementById('modal-backdrop');
-  if(backdrop){
-    backdrop.addEventListener('click', e=>{ if(e.target===backdrop) closeModal(); });
-    const closeBtn = document.getElementById('modal-close'); if(closeBtn) closeBtn.addEventListener('click', closeModal);
-    const cancelBtn = document.getElementById('modal-cancel'); if(cancelBtn) cancelBtn.addEventListener('click', closeModal);
-    const saveBtn = document.getElementById('f-save');
-    if(saveBtn){
-      saveBtn.addEventListener('click', ()=>{
-        const t = state.modal.type;
-        if(t.includes('expense')) saveExpenseFromModal();
-        else if(t.includes('income')) saveIncomeFromModal();
-        else if(t.includes('budget')) saveBudgetFromModal();
-      });
-    }
-    const confirmDel = document.getElementById('confirm-del');
-    if(confirmDel) confirmDel.addEventListener('click', ()=>{
-      const p = state.modal.payload;
-      if(p.kind==='expense'){ state.expenses = state.expenses.filter(e=>e.id!==p.id); showToast('Expense deleted'); }
-      else if(p.kind==='income'){ state.income = state.income.filter(i=>i.id!==p.id); showToast('Income deleted'); }
-      else if(p.kind==='budget'){ state.budgets = state.budgets.filter(b=>b.id!==p.id); showToast('Budget deleted'); }
-      else if(p.onConfirm==='clear-all'){
-        state.expenses=[]; state.income=[]; state.budgets=[];
-        showToast('All data cleared');
-      }
-      persist(); closeModal();
-    });
+  const bd=document.getElementById('backdrop');
+  if(bd){
+    bd.onclick=e=>{ if(e.target===bd) closeModal(); };
+    const c1=document.getElementById('modal-close'); if(c1) c1.onclick=closeModal;
+    const c2=document.getElementById('modal-cancel'); if(c2) c2.onclick=closeModal;
+    const sv=document.getElementById('f-save');
+    if(sv) sv.onclick=()=>{ const t=state.modal.type;
+      if(t.includes('expense')) saveExpense(); else if(t.includes('income')) saveIncome(); else saveBudget(); };
+    const dl=document.getElementById('confirm-del');
+    if(dl) dl.onclick=()=>{
+      const p=state.modal.payload;
+      let msg='Deleted';
+      if(p.kind==='expense'){ state.expenses=state.expenses.filter(e=>e.id!==p.id); msg='Expense deleted'; }
+      else if(p.kind==='income'){ state.income=state.income.filter(i=>i.id!==p.id); msg='Income deleted'; }
+      else if(p.kind==='budget'){ state.budgets=state.budgets.filter(b=>b.id!==p.id); msg='Budget deleted'; }
+      else if(p.onConfirm==='clear-all'){ state.expenses=[]; state.income=[]; state.budgets=[]; msg='All data cleared'; }
+      persist(); closeModal(); toast(msg);
+    };
+    const first=bd.querySelector('.field'); if(first && window.innerWidth>640) first.focus();
   }
 }
 
-// lightweight partial re-render for search input (keeps focus)
-function renderExpensesOnly(){
-  document.querySelector('main').innerHTML = renderExpenses();
-  attachEvents();
-  const hs = document.getElementById('hist-search');
-  if(hs){ hs.focus(); hs.setSelectionRange(hs.value.length, hs.value.length); }
+function repaintExpenses(){
+  document.querySelector('.content').innerHTML=viewExpenses();
+  bind();
+  const hs=document.getElementById('hist-search');
+  if(hs){ hs.focus(); hs.setSelectionRange(hs.value.length,hs.value.length); }
 }
 
-/* ============================= INIT ============================= */
-renderApp();
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&state.modal) closeModal(); });
+render();
 </script>
 </body>
 </html>
